@@ -23,7 +23,16 @@ bool jsgo()
     return retval;
 }
 
-const char* jstr()
+const opcodetype** stringCompile(char** opcodes, int len){
+  opcodetype opcodebytes[] = { OP_RETURN };
+  for(int i=0; i<len; i++) {
+    char* opcode = opcodes[i];
+    printf("stringCompile %d %s\n", i, opcode);
+  }
+  //return &opcodebytes;
+}
+
+const char* scriptToString()
 {
     CScript c = CScript();
     c << OP_RETURN;
