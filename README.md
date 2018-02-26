@@ -1,0 +1,1 @@
+Build the script/interpreter part of the bitcoin code base for webasm.
