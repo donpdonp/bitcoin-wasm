@@ -23,7 +23,8 @@ bool jsgo()
     return retval;
 }
 
-const opcodetype** stringCompile(char** opcodes, int len){
+const opcodetype** stringCompile(int len, char** opcodes){
+  printf("stringCompile %d op:%d len:%d \n", sizeof(char*), opcodes, len);
   opcodetype opcodebytes[] = { OP_RETURN };
   for(int i=0; i<len; i++) {
     char* opcode = opcodes[i];

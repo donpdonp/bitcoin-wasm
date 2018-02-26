@@ -9,8 +9,8 @@ bitcoin_files = script/interpreter.cpp script/script.cpp script/script_error.cpp
 bitcoin_files_full = $(addprefix $(bitcoin_source)/src/, $(bitcoin_files))
 
 # bridge functions
-exports = 'EXPORTED_FUNCTIONS=["_jsgo","_scriptToString"]'
-export_extras = 'EXTRA_EXPORTED_RUNTIME_METHODS=["cwrap","ccall"]'
+exports = 'EXPORTED_FUNCTIONS=["_jsgo","_scriptToString", "_stringCompile"]'
+export_extras = 'EXTRA_EXPORTED_RUNTIME_METHODS=["cwrap","ccall", "writeAsciiToMemory", "writeArrayToMemory"]'
 
 # misc
 build = ./build
@@ -27,3 +27,4 @@ build:
 	mkdir $(build)
 clean:
 	rm -f $(build)/*.o $(build)/*.wasm $(build)/*.wast $(build)/*.js $(build)/*.map
+
