@@ -6,9 +6,9 @@ function onRuntimeInitialized() {
   var strBufArr = ops.map(function(s){ 
     var b = Module._malloc(s.length+1); 
     Module.writeAsciiToMemory(s, b);
-    return b } );
-  var heapBytes = _arrayToHeap(new Uint32Array(strBufArr));
-  //Module.ccall('stringCompile', 'boolean', ['array', 'number'], [strbufarr, 1])
+    return b } )
+  var heapBytes = _arrayToHeap(new Uint32Array(strBufArr))
+  //Module.ccall('stringCompile', 'boolean', ['array', 'number'], [strBufArr, ops.length]) // Y U no work
   Module.ccall('stringCompile', 'boolean', ['number', 'number'], [heapBytes.byteOffset, ops.length])
 }
 
