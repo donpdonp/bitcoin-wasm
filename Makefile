@@ -19,8 +19,7 @@ all: build bridge.js
 #emscripten
 bridge.js: src/*.cpp
 	emcc -s $(exports) -s $(export_extras) -s WASM=1 -I$(bitcoin_source)/src -o build/$@ $(bitcoin_files_full) $^
-	$(wabt)/wasm2wast $(build)/$(@:.js=.wasm) > $(build)/$(@:.js=.wast)
-	ls -l build/$(@:.js=.wast)
+	ls -l build/$(@:.js=.wasm)
 
 build:
 	mkdir $(build)

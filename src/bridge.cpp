@@ -2,9 +2,9 @@
 #include "script/script_error.h"
 #include "script/sign.h"
 
-extern "C" {
+#include "bridge.h"
 
-const opcodetype opStringToOpCode(char* opName);
+extern "C" {
 
 bool jsgo()
 {
@@ -25,9 +25,8 @@ bool jsgo()
   return retval;
 }
 
-const CScript* stringCompile(char** opcodeNames, int len){
-  printf("stringCompile %d op:%d len:%d \n", sizeof(char*), (int)opcodeNames, len);
-  //opcodetype opcodebytes[] = { OP_RETURN };
+const int stringCompile(char** opcodeNames, int len){
+  printf("stringCompile %d opcode strings \n", sizeof(char*), (int)opcodeNames, len);
   CScript c = CScript();
   for(int i=0; i<len; i++) {
     char* opcodeName = opcodeNames[i];
@@ -39,14 +38,13 @@ const CScript* stringCompile(char** opcodeNames, int len){
       printf("#%d %s invalid\n", i, opcodeName);
     }
   }
-  return &c;
+  scripts.push_back(c);
+  return scripts.size()-1;
 }
 
-const char* scriptToString()
+const char* scriptToString(int idx)
 {
-    CScript c = CScript();
-    c << OP_RETURN;
-    return c.ToString().c_str();
+    return scripts.at(idx).ToString().c_str();
 }
 
 const opcodetype opStringToOpCode(char* opName) {
