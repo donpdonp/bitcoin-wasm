@@ -6,10 +6,10 @@
 
 extern "C" {
 
-bool jsgo()
+bool scriptRun(int idx)
 {
-  printf("jsgo start\n");
-  CScript c = CScript() << OP_RETURN;
+  printf("scriptRun %d\n", idx);
+  CScript c = scripts.at(idx);
   //bool EvalScript(vector<vector<unsigned char> >& stack, const CScript& script, unsigned int flags, const BaseSignatureChecker& checker, ScriptError* serror)
   std::vector<std::vector<unsigned char> > stack;
   ScriptError error;
