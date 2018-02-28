@@ -6,7 +6,6 @@
 
 extern "C" {
 
-void printStack(std::vector<std::vector<unsigned char> > stack) ;
 bool scriptRun(int idx)
 {
   printf("scriptRun #%d begin\n", idx);
@@ -45,7 +44,7 @@ const int stringCompile(char** opcodeNames, int len){
       opcodetype opcode = opStringToOpCode(opcodeName);
       if(opcode != OP_INVALIDOPCODE) {
         c << opcode;
-        printf("#%d %s opcode\n", i, opcodeName);
+        printf("#%d %s opcode\n", i, GetOpName(opcode));
       } else {
         std::string str(opcodeName);
         if (is_digits(str)) {
