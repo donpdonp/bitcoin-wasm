@@ -6,7 +6,9 @@
 
 extern "C" {
 
-bool scriptRun(int idx)
+stackout* bigStack;
+
+stackout* scriptRun(int idx)
 {
   printf("scriptRun #%d begin\n", idx);
   CScript c = scripts.at(idx);
@@ -23,7 +25,21 @@ bool scriptRun(int idx)
       printf("scriptRun GOOD\n");
   }
   printStack(stack);
-  return retval;
+  return stackToCharArray(stack);
+}
+
+
+stackout* stackToCharArray(std::vector<std::vector<unsigned char> > stack) {
+  bigStack = (stackout*)malloc(sizeof(stackout));
+  int size = stack.size();
+  bigStack->stack = (char**)malloc(sizeof(char*)*size);
+  bigStack->len = size;
+  for(std::vector<unsigned char>::size_type i = 0; i != size; i++) {
+    std::vector<unsigned char> strvec = stack.at(i);
+    std::string str(strvec.begin(), strvec.end());
+    bigStack->stack[i] = (char*)str.c_str();
+  }
+  return bigStack;
 }
 
 void printStack(std::vector<std::vector<unsigned char> > stack) {
@@ -31,7 +47,8 @@ void printStack(std::vector<std::vector<unsigned char> > stack) {
   for(std::vector<unsigned char>::size_type i = 0; i != stack.size(); i++) {
     std::vector<unsigned char> strvec = stack.at(i);
     std::string str(strvec.begin(), strvec.end());
-    printf("scriptRun stack position #%d: %s %d\n", i, str.c_str(), str.c_str()[0]);
+    char* strline = (char*)str.c_str();
+    printf("scriptRun stack position #%d: heap:%d %s %d\n", i, (int)strline, strline, strline[0]);
   }
 }
 

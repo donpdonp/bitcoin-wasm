@@ -9,7 +9,7 @@ bitcoin_files_full = $(addprefix $(bitcoin_source)/src/, $(bitcoin_files))
 
 # bridge functions
 exports = 'EXPORTED_FUNCTIONS=["_scriptRun","_scriptToString", "_stringCompile"]'
-export_extras = 'EXTRA_EXPORTED_RUNTIME_METHODS=["cwrap","ccall", "writeAsciiToMemory", "writeArrayToMemory"]'
+export_extras = 'EXTRA_EXPORTED_RUNTIME_METHODS=["cwrap","ccall", "writeAsciiToMemory", "writeArrayToMemory", "Pointer_stringify", "getValue"]'
 
 # misc
 build = ./build
