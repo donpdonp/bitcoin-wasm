@@ -36,8 +36,12 @@ stackout* stackToCharArray(std::vector<std::vector<unsigned char> > stack) {
   bigStack->len = size;
   for(std::vector<unsigned char>::size_type i = 0; i != size; i++) {
     std::vector<unsigned char> strvec = stack.at(i);
-    std::string str(strvec.begin(), strvec.end());
-    bigStack->stack[i] = (char*)str.c_str();
+    int vsize = strvec.size();
+    char* c_copy = new char[vsize + 1];
+    memcpy(c_copy, (char*)strvec.data(), vsize );
+    c_copy[vsize] = '\0';
+    bigStack->stack[i] = (char*)c_copy;
+    printf("stackBuild position #%d: cptr:%d %s %d\n", i, (int)c_copy, c_copy, c_copy[0]);
   }
   return bigStack;
 }
