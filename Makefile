@@ -14,12 +14,12 @@ export_extras = 'EXTRA_EXPORTED_RUNTIME_METHODS=["cwrap","ccall", "writeAsciiToM
 # misc
 build = ./build
 
-all: build bridge.js
+all: build $(build)/bridge.wasm
 
 #emscripten
-bridge.js: src/*.cpp
-	emcc -s $(exports) -s $(export_extras) -s WASM=1 -I$(bitcoin_source)/src -o build/$@ $(bitcoin_files_full) $^
-	ls -l build/$(@:.js=.wasm)
+$(build)/bridge.wasm: src/*.cpp
+	emcc -s $(exports) -s $(export_extras) -s WASM=1 -I$(bitcoin_source)/src -o $(@:.wasm=.js) $(bitcoin_files_full) $^
+	ls -l $@
 
 build:
 	mkdir $(build)
