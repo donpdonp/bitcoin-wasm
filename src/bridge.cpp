@@ -36,11 +36,13 @@ stackout* stackToCharArray(std::vector<std::vector<unsigned char> > stack) {
   bigStack->stack = (char**)malloc(sizeof(char*)*size);
   bigStack->len = size;
   for(std::vector<unsigned char>::size_type i = 0; i != size; i++) {
+    printf("stacktoChar encoding row %d\n", i);
     std::vector<unsigned char> strvec = stack.at(i);
-    int vsize = strvec.size();
+    uint8_t vsize = strvec.size();
     char* c_copy = new char[vsize + 1];
-    memcpy(c_copy, (char*)strvec.data(), vsize );
-    c_copy[vsize] = '\0';
+    printf("stacktoChar memcopy row %d len %d\n", i, vsize);
+    memcpy(c_copy+1, (char*)strvec.data(), vsize );
+    c_copy[0] = vsize;
     bigStack->stack[i] = (char*)c_copy;
   }
   return bigStack;
