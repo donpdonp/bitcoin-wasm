@@ -1,6 +1,7 @@
 #include "script/script.h"
 #include "script/script_error.h"
 #include "script/sign.h"
+#include "utilstrencodings.h"
 
 #include "bridge.h"
 
@@ -41,7 +42,6 @@ stackout* stackToCharArray(std::vector<std::vector<unsigned char> > stack) {
     memcpy(c_copy, (char*)strvec.data(), vsize );
     c_copy[vsize] = '\0';
     bigStack->stack[i] = (char*)c_copy;
-    printf("stackBuild position #%d: cptr:%d %s %d\n", i, (int)c_copy, c_copy, c_copy[0]);
   }
   return bigStack;
 }
@@ -62,25 +62,31 @@ const int stringCompile(char** opcodeNames, int len){
   for(int i=0; i<len; i++) {
     char* opcodeName = opcodeNames[i];
     if(strlen(opcodeName) > 0) {
-      opcodetype opcode = opStringToOpCode(opcodeName);
-      if(opcode != OP_INVALIDOPCODE) {
-        c << opcode;
-        printf("#%d %s opcode\n", i, GetOpName(opcode));
+      if(strlen(opcodeName) > 2 && opcodeName[0] == 'O' && opcodeName[1] == 'P') {
+        opcodetype opcode = opStringToOpCode(opcodeName);
+        if(opcode != OP_INVALIDOPCODE) {
+          c << opcode;
+          printf("#%d %x %s opcode\n", i, opcode, GetOpName(opcode));
+        } else {
+          printf("#%d %s BAD opcode\n", i, opcodeName);
+        }
       } else {
         std::string str(opcodeName);
-        if (is_digits(str)) {
+        if (is_digits(str)) { // use a CScriptNum for signed 32-bit numbers
           int num = std::stoi(str);
           c << CScriptNum(num);
-          printf("#%d %d number\n", i, num);
+          printf("#%d %d (0x%x) number\n", i, num, num);
         } else {
           std::vector<unsigned char> vectorString;
           std::copy(str.begin(), str.end(), std::back_inserter(vectorString));
           c << vectorString;
-          printf("#%d %s value\n", i, opcodeName);
+          printf("#%d %x value (datalen %d)\n", i, opcodeName[0], (sizeof opcodeName[0]));
         }
       }
     }
+    printf("#%d script opcount: %d hex: %s\n", i, scriptCount(c), HexStr(c).c_str());
   }
+  printf("final script opcount: %d hex: %s\n", scriptCount(c), HexStr(c).c_str());
   scripts.push_back(c);
   return scripts.size()-1;
 }
@@ -104,6 +110,24 @@ const opcodetype opStringToOpCode(char* opName) {
 bool is_digits(const std::string &str)
 {
     return std::all_of(str.begin(), str.end(), ::isdigit); // C++11
+}
+
+int scriptCount(CScript c) {
+  int count = 0;
+  CScript::const_iterator pc = c.begin();
+  opcodetype opcode;
+  std::vector<unsigned char> vch;
+
+  while (pc < c.end()) {
+    if (!c.GetOp(pc, opcode, vch)) {
+      return -1;
+    } else {
+      count += 1;
+    }
+    if (0 <= opcode && opcode <= OP_PUSHDATA4) {
+    }
+  }
+  return count;
 }
 
 }

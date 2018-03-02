@@ -11,6 +11,7 @@ std::vector<CScript> scripts;
 bool is_digits(const std::string &str);
 void printStack(std::vector<std::vector<unsigned char> > stack) ;
 stackout* stackToCharArray(std::vector<std::vector<unsigned char> > stack);
+int scriptCount(CScript c);
 
 }
 
