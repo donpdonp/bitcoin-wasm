@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en"> 
+<head>
+<meta charset="utf-8"/>
+<style>
+.codestack { 
+ display: grid;
+ grid-template-columns: 1fr 1fr;
+}
+#scriptouts { font-family: courier; }
+#codeinputs div input { margin-right: 1em; }
+</style>
+<script src="bridge.js"></script>
+</head>
+<body>
+<div id="banner">
+bitcoin script wasm <span id="loading">(loading wasm...)</span>
+</div>
+
+<div class="codestack">
+
+<div class="code">
+<div>
+OPCODES
+</div>
+<form onSubmit="justgo(); return false">
+<div id="codeinputs">
+</div>
+<input type=submit name="run" value="Run" />
+<form>
+</div>
+
+<div class="stack">
+<span class="stackhead">Stack (hex)</span>
+<div id="scriptouts">
+</div>
+</div>
+
+</div>
+
+<script>
+var inputsDiv = document.getElementById('codeinputs')
+var scriptoutsDiv = document.getElementById('scriptouts')
+for(i=0; i<5; i++){ 
+  var inputDiv = document.createElement('div')
+  var inputField = document.createElement('input')
+  inputField.size = 55
+  inputDiv.appendChild(inputField)
+  inputDiv.appendChild(document.createElement('span'))
+  inputsDiv.appendChild(inputDiv)
+  var scriptrow = document.createElement('div')
+  scriptoutsDiv.appendChild(scriptrow)
+}
+
+Module['onRuntimeInitialized'] = onRuntimeInitialized;
+function onRuntimeInitialized() {
+  document.querySelector('#banner').style.backgroundColor="#0f0"
+  document.querySelector('#loading').innerHTML="ready."
+}
+
+function inputInputs() {
+  var inputElements = document.querySelectorAll('#codeinputs div input')
+  var inputs = Array.from(inputElements).map(function(e){
+    e.value = e.value.toUpperCase()
+    return e.value
+  })
+  return inputs.clean('')
+}
+
+function inputOutputs(arr) {
+  var inputElements = document.querySelectorAll('#codeinputs div span')
+  var inputs = Array.from(inputElements).map(function(e,i){
+    if (i < arr.length) {
+      var msg = arr[i]
+      e.innerHTML = msg
+    } else {
+      e.innerHTML = ''
+    }
+  })
+}
+
+function justgo() {
+  console.log('--- js script run')
+  var stack = compile(inputInputs())
+  stackOutputs(stack)
+}
+
+function stackSuccess(success) {
+  var stackHead = document.querySelector('.stackhead')
+  var color = success ? "#0f0" : "#f00"
+  stackHead.style.backgroundColor = color
+}
+
+function stackOutputs(stack) {
+  var stackrows = Array.from(scriptoutsDiv.children)
+  stackrows.forEach(function(e){e.innerHTML=''})
+  stack.forEach(function(s,i){
+    var el = stackrows[i]
+    var msg = "(empty)"
+    if(s.length > 4) {
+      msg = toHex(s)+' ('+s.length+' bytes)'
+    } else {
+      s.reverse() // happens in-place
+      var negative = 1
+      if(s[0] & 0x80) {
+        s[0] &= ~0x80
+        negative = -1
+      }
+      var sint = s.reduce(function(m,e){ return (m<<8|e) }, 0)  * negative
+      msg = sint
+      msg += '(number) [0x'+Object.values(s).map(function(s){var hex=s.toString(16); return hex.length == 1 ? '0'+hex : hex}).join('')+']'
+    }
+    el.innerHTML= msg
+  })
+}
+
+var currentScriptIdx = 0;
+
+function compile(ops) {
+  console.log('js compile opslen', ops.length, ops)
+  var strBufArr = ops.map(function(s){ 
+    var bbuf = Module._malloc(s.length+1); 
+    Module.writeAsciiToMemory(s, bbuf);
+    return bbuf } )
+  var heapBytes = _arrayToHeap(new Uint32Array(strBufArr))
+  var idx = Module.ccall('stringCompile', 'number', ['number', 'number'], 
+                            [heapBytes.byteOffset, ops.length])
+  console.log('compiled to script', '#'+idx)
+  currentScriptIdx = idx;
+  var scriptStr = Module.ccall('scriptToString', 'string', ['number'], [idx])
+  inputOutputs(scriptStr.split(' '))
+  console.log('scriptToString', '#'+idx, scriptStr.split(' '))
+  var struct = Module.ccall('scriptRun', 'number', ['number'], [idx])
+  var success = Module.getValue(struct, 'i8')
+  stackSuccess(success)
+  var len = Module.getValue(struct+4, 'i64')
+  var stk = []
+  var charheap = Module.getValue(struct+8, '*')
+  for(var i=0; i<len; i++){ 
+    var rowheap = Module.getValue(charheap+(4*i), '*')
+    var stkrowlen = Module.getValue(rowheap, 'i8')
+    var stkrow = new Uint8Array(Module.HEAPU8.buffer, rowheap+1, stkrowlen);
+    stk.push(stkrow)
+  }
+  return stk
+}
+
+function _arrayToHeap(typedArray){
+  var numBytes = typedArray.length * typedArray.BYTES_PER_ELEMENT;
+  var ptr = Module._malloc(numBytes);
+  var heapBytes = new Uint8Array(Module.HEAPU8.buffer, ptr, numBytes);
+  heapBytes.set(new Uint8Array(typedArray.buffer));
+  return heapBytes;
+}
+
+function toHex(s) {
+    var h = ''
+    for (var i = 0; i < s.length; i++) {
+        var hexDigits = s[i].toString(16)
+        if(hexDigits.length <2) { hexDigits = '0'+hexDigits }
+        h += hexDigits
+    }
+    return h
+}
+
+function fromHex(h) {
+    var s = ''
+    for (var i = 0; i < h.length; i+=2) {
+        s += String.fromCharCode(parseInt(h.substr(i, 2), 16))
+    }
+    return s
+}
+
+Array.prototype.clean = function(deleteValue) {
+  for (var i = 0; i < this.length; i++) {
+    if (this[i] == deleteValue) {         
+      this.splice(i, 1);
+      i--;
+    }
+  }
+  return this;
+};
+</script>
+
+</body>
+</html>
