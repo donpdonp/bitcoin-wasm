@@ -21,12 +21,14 @@ stackout* scriptRun(int idx)
   const TransactionSignatureChecker& checker = TransactionSignatureChecker(&tx, nIn);
   bool retval = EvalScript(stack, c, SCRIPT_VERIFY_P2SH, checker, &error);
   if (retval == 0) {
-      printf("scriptRun err: %s\n", ScriptErrorString(error));
+      printf("scriptRun FAIL: %s\n", ScriptErrorString(error));
   } else {
       printf("scriptRun GOOD\n");
   }
   printStack(stack);
-  return stackToCharArray(stack);
+  stackout* stackRun = stackToCharArray(stack);
+  stackRun->success = retval;
+  return stackRun;
 }
 
 
@@ -64,7 +66,7 @@ const int stringCompile(char** opcodeNames, int len){
   for(int i=0; i<len; i++) {
     char* opcodeName = opcodeNames[i];
     if(strlen(opcodeName) > 0) {
-      if(strlen(opcodeName) > 2 && opcodeName[0] == 'O' && opcodeName[1] == 'P') {
+      if(strlen(opcodeName) >= 2 && opcodeName[0] == 'O' && opcodeName[1] == 'P') {
         opcodetype opcode = opStringToOpCode(opcodeName);
         if(opcode != OP_INVALIDOPCODE) {
           c << opcode;
@@ -72,18 +74,24 @@ const int stringCompile(char** opcodeNames, int len){
         } else {
           printf("#%d %s BAD opcode\n", i, opcodeName);
         }
+      } else if (strlen(opcodeName) > 10 && opcodeName[0] == '0' && opcodeName[1] == 'X') { // more than 4 bytes is a data value
+        std::vector<unsigned char> byteString;
+        for(int i=2; i < strlen(opcodeName); i+=2) {
+          char minichar[5] = "0x";
+          minichar[2] = opcodeName[i];
+          minichar[3] = opcodeName[i+1];
+          minichar[4] = 0;
+          char c = (char)std::stoi(minichar, 0, 16);
+          printf("#%d %s minichar. ch %c \n", i, minichar, c);
+          byteString.push_back(c);
+        }
+        c << byteString;
+        printf("#%d %s value (datalen %d)\n", i, opcodeName, (sizeof opcodeName[0]));
       } else {
         std::string str(opcodeName);
-        if (is_digits(str)) { // use a CScriptNum for signed 32-bit numbers
-          int num = std::stoi(str);
-          c << CScriptNum(num);
-          printf("#%d %d (0x%x) number\n", i, num, num);
-        } else {
-          std::vector<unsigned char> vectorString;
-          std::copy(str.begin(), str.end(), std::back_inserter(vectorString));
-          c << vectorString;
-          printf("#%d %x value (datalen %d)\n", i, opcodeName[0], (sizeof opcodeName[0]));
-        }
+        int num = std::stoi(str, 0, 0);
+        c << CScriptNum(num);
+        printf("#%d %d (0x%x) number\n", i, num, num);
       }
     }
     printf("#%d script opcount: %d hex: %s\n", i, scriptCount(c), HexStr(c).c_str());
@@ -111,7 +119,11 @@ const opcodetype opStringToOpCode(char* opName) {
 
 bool is_digits(const std::string &str)
 {
-    return std::all_of(str.begin(), str.end(), ::isdigit); // C++11
+  return std::all_of(str.begin(), str.end(), digitCheck ); // C++11
+}
+
+int digitCheck(char ch) {
+  return ::isdigit(ch) || ch == '-';
 }
 
 int scriptCount(CScript c) {
