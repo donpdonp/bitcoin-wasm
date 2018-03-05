@@ -25,7 +25,7 @@ stackout* scriptRun(int idx)
   } else {
       printf("scriptRun GOOD\n");
   }
-  printStack(stack);
+  //printStack(stack);
   stackout* stackRun = stackToCharArray(stack);
   stackRun->success = retval;
   return stackRun;
@@ -38,7 +38,6 @@ stackout* stackToCharArray(std::vector<std::vector<unsigned char> > stack) {
   bigStack->stack = (char**)malloc(sizeof(char*)*size);
   bigStack->len = size;
   for(std::vector<unsigned char>::size_type i = 0; i != size; i++) {
-    printf("stacktoChar encoding row %d\n", i);
     std::vector<unsigned char> strvec = stack.at(i);
     uint8_t vsize = strvec.size();
     char* c_copy = new char[vsize + 1];
@@ -82,7 +81,6 @@ const int stringCompile(char** opcodeNames, int len){
           minichar[3] = opcodeName[i+1];
           minichar[4] = 0;
           char c = (char)std::stoi(minichar, 0, 16);
-          printf("#%d %s minichar. ch %c \n", i, minichar, c);
           byteString.push_back(c);
         }
         c << byteString;
@@ -94,9 +92,8 @@ const int stringCompile(char** opcodeNames, int len){
         printf("#%d %d (0x%x) number\n", i, num, num);
       }
     }
-    printf("#%d script opcount: %d hex: %s\n", i, scriptCount(c), HexStr(c).c_str());
   }
-  printf("final script opcount: %d hex: %s\n", scriptCount(c), HexStr(c).c_str());
+  printf("script opcount: %d hex: %s\n", scriptCount(c), HexStr(c).c_str());
   scripts.push_back(c);
   return scripts.size()-1;
 }
