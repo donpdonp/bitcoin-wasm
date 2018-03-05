@@ -26,3 +26,5 @@ build:
 clean:
 	rm -f $(build)/*.o $(build)/*.wasm $(build)/*.wast $(build)/*.js $(build)/*.map
 
+node:
+	cd build; node ../run.js
