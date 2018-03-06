@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="en"> 
 <head>
-<meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline'; form-action 'self' 'unsafe-inline'">
 <meta charset="utf-8"/>
 <style>
 .codestack { 
@@ -9,7 +8,7 @@
  grid-template-columns: 1fr 1fr;
 }
 #scriptouts { font-family: courier; }
-#codeinputs div input { margin-right: 1em; }
+#codeinputs textarea { width:25em; height: 10em; }
 </style>
 <script src="bridge.js"></script>
 </head>
@@ -22,19 +21,24 @@ bitcoin script wasm <span id="loading">(loading wasm...)</span>
 
 <div class="code">
 <div>
-OPCODES
+Bitcoin Script
 </div>
 <form onSubmit="justgo(); return false">
 <div id="codeinputs">
+<textarea></textarea>
 </div>
 <input type=submit name="run" value="Run" />
 <form>
 </div>
 
 <div class="stack">
-<span class="stackhead">Stack (hex)</span>
+<span class="stackhead">Stack [hex]</span>
 <div id="scriptouts">
 </div>
+</div>
+
+<div id="codeout">
+Codeout
 </div>
 
 </div>
@@ -42,16 +46,6 @@ OPCODES
 <script>
 var inputsDiv = document.getElementById('codeinputs')
 var scriptoutsDiv = document.getElementById('scriptouts')
-for(i=0; i<5; i++){ 
-  var inputDiv = document.createElement('div')
-  var inputField = document.createElement('input')
-  inputField.size = 55
-  inputDiv.appendChild(inputField)
-  inputDiv.appendChild(document.createElement('span'))
-  inputsDiv.appendChild(inputDiv)
-  var scriptrow = document.createElement('div')
-  scriptoutsDiv.appendChild(scriptrow)
-}
 
 Module['onRuntimeInitialized'] = onRuntimeInitialized;
 function onRuntimeInitialized() {
@@ -60,29 +54,35 @@ function onRuntimeInitialized() {
 }
 
 function inputInputs() {
-  var inputElements = document.querySelectorAll('#codeinputs div input')
-  var inputs = Array.from(inputElements).map(function(e){
-    e.value = e.value.toUpperCase()
-    return e.value
+  var inputText = document.querySelector('#codeinputs textarea')
+  var inputs = inputText.value.split('\n').map(function(line){
+    line = line.toUpperCase()
+    return line
   })
   return inputs.clean('')
 }
 
-function inputOutputs(arr) {
-  var inputElements = document.querySelectorAll('#codeinputs div span')
-  var inputs = Array.from(inputElements).map(function(e,i){
-    if (i < arr.length) {
-      var msg = arr[i]
-      e.innerHTML = msg
-    } else {
-      e.innerHTML = ''
-    }
+function inputOutputs(ops) {
+  var outElements = document.querySelector('#codeout')
+  outElements.innerHTML = '' //clear
+  ops.forEach((op, i) => {
+    var msg =  Array.from(op).map(o => {
+      var msg = o.toString(16)
+      var pmsg = msg.length == 1 ? '0'+msg : msg
+      return pmsg
+    }).join('')
+    var el = document.createElement('div')
+    el.innerHTML = i+": 0x"+msg
+    outElements.appendChild(el)
   })
 }
 
 function justgo() {
   console.log('--- js script run')
-  var stack = compile(inputInputs())
+  var scriptIdx = compile(inputInputs())
+  var ops = decompile(scriptIdx)
+  inputOutputs(ops)
+  var stack = scriptRun(scriptIdx)
   stackOutputs(stack)
 }
 
@@ -93,10 +93,15 @@ function stackSuccess(success) {
 }
 
 function stackOutputs(stack) {
-  var stackrows = Array.from(scriptoutsDiv.children)
-  stackrows.forEach(function(e){e.innerHTML=''})
+  scriptoutsDiv.innerHTML = '' // clean out
   stack.forEach(function(s,i){
-    var el = stackrows[i]
+    var el = document.createElement('div')
+    el.innerHTML= stackBytestoString(s)
+    scriptoutsDiv.appendChild(el)
+  })
+}
+
+function stackBytestoString(s) {
     var msg = "(empty)"
     if(s.length > 4) {
       msg = toHex(s)+' ('+s.length+' bytes)'
@@ -111,11 +116,8 @@ function stackOutputs(stack) {
       msg = sint
       msg += '(number) [0x'+Object.values(s).map(function(s){var hex=s.toString(16); return hex.length == 1 ? '0'+hex : hex}).join('')+']'
     }
-    el.innerHTML= msg
-  })
+    return msg
 }
-
-var currentScriptIdx = 0;
 
 function compile(ops) {
   console.log('js compile opslen', ops.length, ops)
@@ -127,14 +129,31 @@ function compile(ops) {
   var idx = Module.ccall('stringCompile', 'number', ['number', 'number'], 
                             [heapBytes.byteOffset, ops.length])
   console.log('compiled to script', '#'+idx)
-  currentScriptIdx = idx;
-  var scriptStr = Module.ccall('scriptToString', 'string', ['number'], [idx])
-  inputOutputs(scriptStr.split(' '))
-  console.log('scriptToString', '#'+idx, scriptStr.split(' '))
+  return idx
+}
+
+function decompile(idx) {
+  var code = Module.ccall('decompile', 'number', ['number'], [idx])
+  var linecount = Module.getValue(code, 'i32')
+  var lines = []
+  var linesheap = Module.getValue(code+4, '*')
+  console.log('js decompiled to ', 'codeptr:'+code, 'lines:'+linecount, 'linesheap:'+linesheap)
+  for(var i=0; i<linecount; i++){ 
+    var lineheap = Module.getValue(linesheap+(4*i), '*')
+    var linelen = Module.getValue(lineheap, 'i8')
+    console.log('js decompile line', '#'+i, 'ptr:'+lineheap, 'len:'+linelen)
+    var stkrow = new Uint8Array(Module.HEAPU8.buffer, lineheap+1, linelen);
+    lines.push(stkrow)
+  }
+  return lines
+}
+
+function scriptRun(idx) {
   var struct = Module.ccall('scriptRun', 'number', ['number'], [idx])
   var success = Module.getValue(struct, 'i8')
   stackSuccess(success)
-  var len = Module.getValue(struct+4, 'i64')
+  var len = Module.getValue(struct+4, 'i32')
+  console.log('scriptRun post success', success, 'stklen', len)
   var stk = []
   var charheap = Module.getValue(struct+8, '*')
   for(var i=0; i<len; i++){ 
