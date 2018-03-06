@@ -7,14 +7,15 @@
  display: grid;
  grid-template-columns: 1fr 1fr;
 }
+.lineno { font-size: 80% }
 #scriptouts { font-family: courier; }
-#codeinputs textarea { width:25em; height: 10em; }
+#codeinputs textarea { width: 35em; height: 10em; }
 </style>
 <script src="bridge.js"></script>
 </head>
 <body>
 <div id="banner">
-bitcoin script wasm <span id="loading">(loading wasm...)</span>
+bitcoin script <span id="loading">(loading wasm...)</span>
 </div>
 
 <div class="codestack">
@@ -37,8 +38,10 @@ Bitcoin Script
 </div>
 </div>
 
+<div>
+Compiled script bytes
 <div id="codeout">
-Codeout
+</div>
 </div>
 
 </div>
@@ -50,7 +53,8 @@ var scriptoutsDiv = document.getElementById('scriptouts')
 Module['onRuntimeInitialized'] = onRuntimeInitialized;
 function onRuntimeInitialized() {
   document.querySelector('#banner').style.backgroundColor="#0f0"
-  document.querySelector('#loading').innerHTML="ready."
+  var verz = Module.ccall('version', 'string', [], [])
+  document.querySelector('#loading').innerHTML = "(dogecoin "+verz + " ready)"
 }
 
 function inputInputs() {
@@ -72,7 +76,8 @@ function inputOutputs(ops) {
       return pmsg
     }).join('')
     var el = document.createElement('div')
-    el.innerHTML = i+": 0x"+msg
+    if (msg.length > 25) { msg = msg.substr(0,25)+"..."+msg.substr(msg.length-2, 2) }
+    el.innerHTML = "<span class='lineno'>op "+(i+1)+":</span> 0x"+msg
     outElements.appendChild(el)
   })
 }
