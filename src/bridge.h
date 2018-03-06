@@ -6,8 +6,10 @@ struct stackout {
   char** stack;
 };
 
+stackout* bigStack;
 
 const opcodetype opStringToOpCode(char* opName);
+void encodeOp(CScript* c, char* opcodeName);
 std::vector<CScript> scripts;
 bool is_digits(const std::string &str);
 int digitCheck(char ch);
