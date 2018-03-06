@@ -33,7 +33,7 @@ scriptRun(int idx)
 stackout* 
 stackToCharArray(std::vector<std::vector<unsigned char> > stack) 
 {
-  bigStack = (stackout*)malloc(sizeof(stackout));
+  stackout* bigStack = (stackout*)malloc(sizeof(stackout));
   int size = stack.size();
   bigStack->stack = (char**)malloc(sizeof(char*)*size);
   bigStack->len = size;
@@ -101,18 +101,27 @@ encodeOp(CScript* c, char* opcodeName)
   }
 }
 
-char**
+codeout*
 decompile(int idx) {
+  codeout* code = (codeout*)malloc(sizeof(codeout));
+  code->len = 0;
+  code->lines = 0;
   CScript c = scripts.at(idx);
   CScript::const_iterator pc = c.begin();
   opcodetype opcode;
   std::vector<unsigned char> vch;
   while (pc < c.end()) {
+    code->len += 1;
+    code->lines = (char**)realloc(code->lines, sizeof(char*)*code->len);
+    char* line = code->lines[code->len-1];
     if (!c.GetOp(pc, opcode, vch)) {
+      printf("Script.GetOp err\n");
     } else {
+      printf("decompiled #%d %x\n", code->len, vch[0]);
+      line = strvecToSizedCharPtr(&vch);
     }
   }
-  return 0;
+  return code;
 }
 
 const char* 

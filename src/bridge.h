@@ -6,10 +6,13 @@ struct stackout {
   char** stack;
 };
 
-stackout* bigStack;
+struct codeout {
+  int len;
+  char** lines;
+};
 
 const opcodetype opStringToOpCode(char* opName);
-char** decompile(int idx);
+codeout* decompile(int idx);
 void encodeOp(CScript* c, char* opcodeName);
 std::vector<CScript> scripts;
 bool is_digits(const std::string &str);
