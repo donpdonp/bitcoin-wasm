@@ -1,3 +1,4 @@
+#include "config/bitcoin-config.h"
 #include "script/script.h"
 #include "script/script_error.h"
 #include "script/sign.h"
@@ -171,6 +172,22 @@ scriptCount(CScript c)
     }
   }
   return count;
+}
+
+const char* version() {
+  std::string str;
+/*
+  str += "v";
+  str += std::to_string(CLIENT_VERSION_MAJOR);
+  str += ".";
+  str += std::to_string(CLIENT_VERSION_MINOR);
+  str += ".";
+  str += std::to_string(CLIENT_VERSION_REVISION);
+  str += ".";
+  str += std::to_string(CLIENT_VERSION_BUILD);
+  return str.c_str();
+*/
+  return PACKAGE_VERSION;
 }
 
 }
