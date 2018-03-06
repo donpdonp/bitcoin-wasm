@@ -24,7 +24,6 @@ scriptRun(int idx)
   } else {
       printf("scriptRun GOOD\n");
   }
-  //printStack(stack);
   stackout* stackRun = stackToCharArray(stack);
   stackRun->success = retval;
   return stackRun;
@@ -40,25 +39,18 @@ stackToCharArray(std::vector<std::vector<unsigned char> > stack)
   bigStack->len = size;
   for(std::vector<unsigned char>::size_type i = 0; i != size; i++) {
     std::vector<unsigned char> strvec = stack.at(i);
-    uint8_t vsize = strvec.size();
-    char* c_copy = new char[vsize + 1];
-    memcpy(c_copy+1, (char*)strvec.data(), vsize );
-    c_copy[0] = vsize;
-    bigStack->stack[i] = (char*)c_copy;
+    bigStack->stack[i] = strvecToSizedCharPtr(&strvec);
   }
   return bigStack;
 }
 
-void 
-printStack(std::vector<std::vector<unsigned char> > stack) 
-{
-  printf("scriptRun stack size %d:\n", stack.size());
-  for(std::vector<unsigned char>::size_type i = 0; i != stack.size(); i++) {
-    std::vector<unsigned char> strvec = stack.at(i);
-    std::string str(strvec.begin(), strvec.end());
-    char* strline = (char*)str.c_str();
-    printf("scriptRun stack position #%d: heap:%d %s %d\n", i, (int)strline, strline, strline[0]);
-  }
+char* 
+strvecToSizedCharPtr(std::vector<unsigned char>* strvec) {
+  uint8_t vsize = strvec->size();
+  char* c_copy = new char[vsize + 1];
+  memcpy(c_copy+1, (char*)strvec->data(), vsize );
+  c_copy[0] = vsize;
+  return (char*)c_copy;
 }
 
 const int 
@@ -107,6 +99,20 @@ encodeOp(CScript* c, char* opcodeName)
       printf("%d (0x%x) number\n", num, num);
     }
   }
+}
+
+char**
+decompile(int idx) {
+  CScript c = scripts.at(idx);
+  CScript::const_iterator pc = c.begin();
+  opcodetype opcode;
+  std::vector<unsigned char> vch;
+  while (pc < c.end()) {
+    if (!c.GetOp(pc, opcode, vch)) {
+    } else {
+    }
+  }
+  return 0;
 }
 
 const char* 
