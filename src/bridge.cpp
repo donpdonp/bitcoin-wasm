@@ -50,7 +50,7 @@ strvecToSizedCharPtr(std::vector<unsigned char>* strvec) {
   char* c_copy = new char[vsize + 1];
   memcpy(c_copy+1, (char*)strvec->data(), vsize );
   c_copy[0] = vsize;
-  return (char*)c_copy;
+  return c_copy;
 }
 
 const int 
@@ -103,22 +103,21 @@ encodeOp(CScript* c, char* opcodeName)
 
 codeout*
 decompile(int idx) {
-  codeout* code = (codeout*)malloc(sizeof(codeout));
-  code->len = 0;
-  code->lines = 0;
   CScript c = scripts.at(idx);
+  codeout* code = (codeout*)malloc(sizeof(codeout));
+  code->len = scriptCount(c);
+  code->lines = (char**)malloc(sizeof(char*)*code->len);
   CScript::const_iterator pc = c.begin();
   opcodetype opcode;
   std::vector<unsigned char> vch;
-  while (pc < c.end()) {
-    code->len += 1;
-    code->lines = (char**)realloc(code->lines, sizeof(char*)*code->len);
-    char* line = code->lines[code->len-1];
+  for (int i=0; pc < c.end(); i++) {
     if (!c.GetOp(pc, opcode, vch)) {
       printf("Script.GetOp err\n");
     } else {
-      printf("decompiled #%d %x\n", code->len, vch[0]);
-      line = strvecToSizedCharPtr(&vch);
+      std::reverse(vch.begin(), vch.end());
+      vch.push_back(opcode);
+      std::reverse(vch.begin(), vch.end());
+      code->lines[i] = strvecToSizedCharPtr(&vch);
     }
   }
   return code;
