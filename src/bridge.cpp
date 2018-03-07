@@ -176,6 +176,9 @@ scriptCount(CScript c)
 
 const char* version() {
   std::string str;
+  str += PROJECT_NAME;
+  str += " ";
+  str += PACKAGE_VERSION;
 /*
   str += "v";
   str += std::to_string(CLIENT_VERSION_MAJOR);
@@ -185,9 +188,8 @@ const char* version() {
   str += std::to_string(CLIENT_VERSION_REVISION);
   str += ".";
   str += std::to_string(CLIENT_VERSION_BUILD);
-  return str.c_str();
 */
-  return PACKAGE_VERSION;
+  return str.c_str();
 }
 
 }
