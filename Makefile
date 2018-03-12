@@ -3,6 +3,10 @@ emsdk=../webasm/emsdk/
 bitcoin_source = ../dogecoin/github
 wabt = ../webasm/wabt-1.0.0/
 
+bitcoin_client_major = `perl -ne 'print if s/\#define\s+CLIENT_VERSION_MAJOR\s+(\d+)/\1/' $(bitcoin_source)/src/clientversion.h`
+bitcoin_client_minor = `perl -ne 'print if s/\#define\s+CLIENT_VERSION_MINOR\s+(\d+)/\1/' $(bitcoin_source)/src/clientversion.h`
+bitcoin_client_revision = `perl -ne 'print if s/\#define\s+CLIENT_VERSION_REVISION\s+(\d+)/\1/' $(bitcoin_source)/src/clientversion.h`
+
 # project name
 ifneq (,$(wildcard $(bitcoin_source)/src/dogecoin.h))
   project_name = dogecoin
@@ -11,6 +15,8 @@ else ifneq (,$(wildcard $(bitcoin_source)/src/bitcoin.h))
 else
   project_name = unknown
 endif
+
+project_full_name = $(codebase_name) $(bitcoin_client_major) $(bitcoin_client_minor) $(bitcoin_client_revision)"
 
 # files from bitcoin
 bitcoin_files = script/interpreter.cpp script/script.cpp script/script_error.cpp crypto/ripemd160.cpp crypto/sha1.cpp crypto/sha256.cpp primitives/transaction.cpp arith_uint256.cpp eccryptoverify.cpp uint256.cpp utilstrencodings.cpp 
@@ -24,10 +30,11 @@ export_extras = 'EXTRA_EXPORTED_RUNTIME_METHODS=["cwrap","ccall", "writeAsciiToM
 build = ./build
 
 all: build $(build)/$(project_name).wasm
+	echo $(codebase_name) $(bitcoin_client_major).$(bitcoin_client_minor).$(bitcoin_client_revision)
 
 #emscripten
 $(build)/$(project_name).wasm: src/*.cpp
-	emcc -s $(exports) -s $(export_extras) -s WASM=1 -D PROJECT_NAME=\"$(project_name)\" -I$(bitcoin_source)/src -o $(build)/$(project_name).js $(bitcoin_files_full) $^
+	emcc -s $(exports) -s $(export_extras) -s WASM=1 -D PROJECT_NAME=\"$(project_full_name)\" -I$(bitcoin_source)/src -o $(build)/$(project_name).js $(bitcoin_files_full) $^
 	ls -l $(build)/$(project_name)* 
 
 build:
