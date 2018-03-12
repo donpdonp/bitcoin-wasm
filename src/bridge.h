@@ -22,6 +22,8 @@ stackout* stackToCharArray(std::vector<std::vector<unsigned char> > stack);
 int scriptCount(CScript c);
 char* strvecToSizedCharPtr(std::vector<unsigned char>* strvec);
 const char* version();
+const int byteCompile(char* scriptBytes, int len);
+
 
 }
 

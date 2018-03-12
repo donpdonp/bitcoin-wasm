@@ -55,6 +55,15 @@ strvecToSizedCharPtr(std::vector<unsigned char>* strvec) {
 }
 
 const int 
+byteCompile(char* scriptBytes, int len) {
+  printf("byteCompile %d bytes \n", len);
+  std::vector<unsigned char> strvec(scriptBytes, scriptBytes+len);
+  CScript c = CScript(strvec.begin(), strvec.end());
+  scripts.push_back(c);
+  return scripts.size()-1;
+}
+
+const int 
 stringCompile(char** opcodeNames, int len)
 {
   printf("stringCompile %d opcode strings \n", len);
