@@ -48,15 +48,14 @@ stackToCharArray(std::vector<std::vector<unsigned char> > stack)
 char* 
 strvecToSizedCharPtr(std::vector<unsigned char>* strvec) {
   uint8_t vsize = strvec->size();
-  char* c_copy = new char[vsize + 1];
+  char* c_copy = new char[vsize + 2];
   memcpy(c_copy+1, (char*)strvec->data(), vsize );
   c_copy[0] = vsize;
   return c_copy;
 }
 
 const int 
-byteCompile(char* scriptBytes, int len) {
-  printf("byteCompile binstrptr %ld len %d bytes. first byte %d \n", scriptBytes, len, scriptBytes[0]);
+byteCompile(unsigned char* scriptBytes, int len) {
   std::vector<unsigned char> strvec(scriptBytes, scriptBytes+len);
   CScript c = CScript(strvec.begin(), strvec.end());
   scripts.push_back(c);
@@ -122,7 +121,7 @@ decompile(int idx) {
   std::vector<unsigned char> vch;
   for (int i=0; pc < c.end(); i++) {
     if (!c.GetOp(pc, opcode, vch)) {
-      printf("Script.GetOp err\n");
+      printf("Script.GetOp err step %d opcode return %u\n", i, opcode);
     } else {
       std::reverse(vch.begin(), vch.end());
       vch.push_back(opcode);
