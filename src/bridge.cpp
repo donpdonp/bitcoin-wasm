@@ -56,7 +56,7 @@ strvecToSizedCharPtr(std::vector<unsigned char>* strvec) {
 
 const int 
 byteCompile(char* scriptBytes, int len) {
-  printf("byteCompile %d bytes \n", len);
+  printf("byteCompile binstrptr %ld len %d bytes. first byte %d \n", scriptBytes, len, scriptBytes[0]);
   std::vector<unsigned char> strvec(scriptBytes, scriptBytes+len);
   CScript c = CScript(strvec.begin(), strvec.end());
   scripts.push_back(c);
@@ -186,8 +186,9 @@ scriptCount(CScript c)
 const char* version() {
   std::string str;
   str += PROJECT_NAME;
+/*
   str += " ";
-  str += PACKAGE_VERSION;
+  str += PACKAGE_VERSION; */
 /*
   str += "v";
   str += std::to_string(CLIENT_VERSION_MAJOR);
