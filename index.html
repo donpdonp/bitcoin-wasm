@@ -8,28 +8,41 @@
  grid-template-columns: 1fr 1fr;
 }
 .lineno { font-size: 80% }
-#scriptouts { font-family: courier; }
-#codeinputs textarea { width: 35em; height: 10em; }
+#compiledscript { margin-top: 2em; }
+#gettx { margin-bottom: 2em; }
+#gettx input { width: 40em; }
+#scriptouts { font-family: courier; 
+ font-size: 90%;
+ width: 40em;}
+#scriptouts div { word-wrap: break-word; }
+#codeinputs textarea { width: 45em; height: 20em; }
 </style>
-<script src="bridge.js"></script>
+<script src="dogecoin.js"></script>
 </head>
 <body>
 <div id="banner">
 bitcoin script <span id="loading">(loading wasm...)</span>
 </div>
 
+<div id="gettx">
+Load editor with Bitcoin TX (optional)
+<form onSubmit="gettx(this); return false">
+<input placeholder="txid">
+</form>
+</div>
+
 <div class="codestack">
 
 <div class="code">
 <div>
-Bitcoin Script
+Bitcoin Script Editor
 </div>
 <form onSubmit="justgo(); return false">
 <div id="codeinputs">
 <textarea></textarea>
 </div>
 <input type=submit name="run" value="Run" />
-<form>
+</form>
 </div>
 
 <div class="stack">
@@ -38,7 +51,7 @@ Bitcoin Script
 </div>
 </div>
 
-<div>
+<div id="compiledscript">
 Compiled script bytes
 <div id="codeout">
 </div>
@@ -54,13 +67,17 @@ Module['onRuntimeInitialized'] = onRuntimeInitialized;
 function onRuntimeInitialized() {
   document.querySelector('#banner').style.backgroundColor="#0f0"
   var verz = Module.ccall('version', 'string', [], [])
-  document.querySelector('#loading').innerHTML = "(dogecoin "+verz + " ready)"
+  document.querySelector('#loading').innerHTML = "("+verz + " loaded)"
 }
 
 function inputInputs() {
   var inputText = document.querySelector('#codeinputs textarea')
   var inputs = inputText.value.split('\n').map(function(line){
-    line = line.toUpperCase()
+    if(line[0] == '#') {
+      line = ''
+    } else {
+      line = line.toUpperCase()
+    }
     return line
   })
   return inputs.clean('')
@@ -70,21 +87,34 @@ function inputOutputs(ops) {
   var outElements = document.querySelector('#codeout')
   outElements.innerHTML = '' //clear
   ops.forEach((op, i) => {
-    var msg =  Array.from(op).map(o => {
-      var msg = o.toString(16)
-      var pmsg = msg.length == 1 ? '0'+msg : msg
-      return pmsg
-    }).join('')
     var el = document.createElement('div')
-    if (msg.length > 25) { msg = msg.substr(0,25)+"..."+msg.substr(msg.length-2, 2) }
-    el.innerHTML = "<span class='lineno'>op "+(i+1)+":</span> 0x"+msg
+    var msg
+    if (op[0] <= 0x4e) {
+      op = Array.from(op)
+      var pusher = op.shift()
+      var hexmsg = toHex(op)
+      if (hexmsg.length > 25) { hexmsg = hexmsg.substr(0,25)+"..."+hexmsg.substr(hexmsg.length-2, 2) }
+      msg = "PUSH "+pusher+" 0x"+hexmsg
+    } else {
+      var tempScript = compileBytes(op)
+      msg = Module.ccall('scriptToString', 'string', ['number'], [tempScript])
+      msg = msg + " (opcode "+op[0].toString(16).toUpperCase()+")"
+    }
+    el.innerHTML = "<span class='lineno'>op "+(i+1)+":</span> "+msg
     outElements.appendChild(el)
   })
 }
 
 function justgo() {
   console.log('--- js script run')
-  var scriptIdx = compile(inputInputs())
+  var inputs = inputInputs()
+  var scriptIdx
+  if (inputs[0].length > 0 && inputs[0][0] == '*') {
+    var hexbytes = inputs[0].substr(1, inputs[0].length-1)
+    scriptIdx = compileBytes(fromHex(hexbytes))
+  } else {
+    scriptIdx = compile(inputs)
+  }
   var ops = decompile(scriptIdx)
   inputOutputs(ops)
   var stack = scriptRun(scriptIdx)
@@ -125,7 +155,6 @@ function stackBytestoString(s) {
 }
 
 function compile(ops) {
-  console.log('js compile opslen', ops.length, ops)
   var strBufArr = ops.map(function(s){ 
     var bbuf = Module._malloc(s.length+1); 
     Module.writeAsciiToMemory(s, bbuf);
@@ -133,7 +162,18 @@ function compile(ops) {
   var heapBytes = _arrayToHeap(new Uint32Array(strBufArr))
   var idx = Module.ccall('stringCompile', 'number', ['number', 'number'], 
                             [heapBytes.byteOffset, ops.length])
-  console.log('compiled to script', '#'+idx)
+  console.log('compiled', ops.length, 'lines to script', '#'+idx)
+  return idx
+}
+
+function compileBytes(binstr) {
+  var uint=new Uint8Array(binstr.length);
+  for(var i=0,j=binstr.length;i<j;++i){
+    uint[i] = typeof binstr == 'string' ? binstr.charCodeAt(i) : binstr[i];
+  }
+  var binstrptr = _arrayToHeap(uint)
+  var idx = Module.ccall('byteCompile', 'number', ['number', 'number'], [binstrptr.byteOffset, binstr.length])
+  console.log('compiled', binstr.length, 'bytes to script', '#'+idx)
   return idx
 }
 
@@ -146,7 +186,6 @@ function decompile(idx) {
   for(var i=0; i<linecount; i++){ 
     var lineheap = Module.getValue(linesheap+(4*i), '*')
     var linelen = Module.getValue(lineheap, 'i8')
-    console.log('js decompile line', '#'+i, 'ptr:'+lineheap, 'len:'+linelen)
     var stkrow = new Uint8Array(Module.HEAPU8.buffer, lineheap+1, linelen);
     lines.push(stkrow)
   }
@@ -181,7 +220,8 @@ function _arrayToHeap(typedArray){
 function toHex(s) {
     var h = ''
     for (var i = 0; i < s.length; i++) {
-        var hexDigits = s[i].toString(16)
+        var byte = typeof s == 'string' ? s.charCodeAt(i) : s[i]
+        var hexDigits = byte.toString(16)
         if(hexDigits.length <2) { hexDigits = '0'+hexDigits }
         h += hexDigits
     }
@@ -205,6 +245,28 @@ Array.prototype.clean = function(deleteValue) {
   }
   return this;
 };
+</script>
+
+<script>
+function gettx(form) {
+  var elements = Array.from(form.elements)
+  var txid = elements[0].value
+  var oReq = new XMLHttpRequest();
+  oReq.addEventListener("load", txloaded);
+  var url = "https://blockexplorer.com/api/tx/"+txid
+  oReq.open("GET", url)
+  console.log('gettx', url)
+  oReq.send();
+}
+
+function txloaded (el) {
+  var text = el.target.response
+  var tx = JSON.parse(text)
+  var inputText = document.querySelector('#codeinputs textarea')
+  var asmin = tx.vin[0].scriptSig.asm.replace(/\s+/g,"\n").split("\n").map(line => {if (line.substr(0,3) == "OP_") { return line } else {return "0x"+line}})
+  var asmout = tx.vout[0].scriptPubKey.asm.replace(/\s+/g,"\n").split("\n").map(line => {if (line.substr(0,3) == "OP_") { return line } else {return "0x"+line}})
+  inputText.value = "# Script IN\n"+asmin.join("\n") + "\n# Script OUT\n" + asmout.join("\n")
+}
 </script>
 
 </body>
