@@ -21,7 +21,7 @@ endif
 project_full_name = $(project_name) $(package_version)
 
 # files from bitcoin
-bitcoin_files = script/interpreter.cpp script/script.cpp script/script_error.cpp crypto/ripemd160.cpp crypto/sha1.cpp crypto/sha256.cpp primitives/transaction.cpp arith_uint256.cpp eccryptoverify.cpp uint256.cpp utilstrencodings.cpp 
+bitcoin_files = script/interpreter.cpp script/script.cpp script/script_error.cpp crypto/ripemd160.cpp crypto/sha1.cpp crypto/sha256.cpp primitives/transaction.cpp arith_uint256.cpp eccryptoverify.cpp uint256.cpp utilstrencodings.cpp pubkey.cpp ecwrapper.cpp
 bitcoin_files_full = $(addprefix $(bitcoin_source)/src/, $(bitcoin_files))
 
 # bridge functions
