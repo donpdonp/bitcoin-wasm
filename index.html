@@ -25,9 +25,16 @@ bitcoin script <span id="loading">(loading wasm...)</span>
 </div>
 
 <div id="gettx">
-Load editor with Bitcoin tx (optional)
 <form onSubmit="gettx(this); return false">
-<input placeholder="txid">
+<div>
+Load editor with tx from  
+<select name="source">
+<option value="bitcoin">bitcoin mainnet</option>
+<option value="dogecoin">dogecoin mainnet (unimplemented)</option>
+</select>
+ (optional)
+</div>
+<input placeholder="txid" name="txid">
 <div id='txloadmsg'>
 </div>
 </form>
@@ -90,21 +97,26 @@ function inputOutputs(ops) {
   outElements.innerHTML = '' //clear
   ops.forEach((op, i) => {
     var el = document.createElement('div')
+    var msg = opToStr(op)
+    if (msg.substr(0,2) == "0x" && msg.length > 25) { msg = msg.substr(0,25)+"..."+msg.substr(msg.length-2, 2)+" (len "+(msg.length-2)/2+")" }
+    if (msg.substr(0,3) == "OP_") {  msg = msg + " (opcode "+op[0].toString(16).toUpperCase()+")" }
+    el.innerHTML = "<span class='lineno'>op "+(i+1)+":</span> "+msg
+    outElements.appendChild(el)
+  })
+}
+
+function opToStr(op) {
     var msg
     if (op[0] <= 0x4e) {
       op = Array.from(op)
       var pusher = op.shift()
       var hexmsg = toHex(op)
-      if (hexmsg.length > 25) { hexmsg = hexmsg.substr(0,25)+"..."+hexmsg.substr(hexmsg.length-2, 2) }
-      msg = "PUSH "+pusher+" 0x"+hexmsg
+      msg = "0x"+hexmsg
     } else {
       var tempScript = compileBytes(op)
       msg = Module.ccall('scriptToString', 'string', ['number'], [tempScript])
-      msg = msg + " (opcode "+op[0].toString(16).toUpperCase()+")"
     }
-    el.innerHTML = "<span class='lineno'>op "+(i+1)+":</span> "+msg
-    outElements.appendChild(el)
-  })
+  return msg
 }
 
 function justgo() {
@@ -250,31 +262,45 @@ Array.prototype.clean = function(deleteValue) {
 </script>
 
 <script>
+function txurl(source, txid) {
+  var url
+  if(source == "bitcoin") { url = "https://blockexplorer.com/api/tx/"+txid }
+  if(source == "dogecoin") { url = "https://dogechain.info/api/v1/transaction/"+txid }
+  if(source == "dogecoin") { url = "https://chain.so//api/v2/tx/doge/"+txid }
+  if(source == "dogecoin") { url = "https://api.blockcypher.com/v1/doge/main/txs/"+txid }
+  return url
+}
+
 function gettx(form) {
-  var elements = Array.from(form.elements)
-  var txid = elements[0].value
+  var source = form.elements['source'].value
+  var txid = form.elements['txid'].value
+  if(txid.substr(0,2) == "0x") { txid = txid.substr(2, txid.length-2) }
   var oReq = new XMLHttpRequest();
   var txloadmsg = document.querySelector('#txloadmsg')
-  oReq.addEventListener("load", (el) => {txloaded(el, txid)});
+  oReq.addEventListener("load", (el) => {txloaded(el, source, txid)});
   oReq.addEventListener("error", function(){txloadmsg.innerHTML = 'network error'});
-  var url = "https://blockexplorer.com/api/tx/"+txid
+  var url = txurl(source, txid)
   oReq.open("GET", url)
   txloadmsg.innerHTML = "loading tx..."
   oReq.send();
 }
 
-function txloaded (el, txid) {
+function txloaded (el, source, txid) {
   var txloadmsg = document.querySelector('#txloadmsg')
   var text = el.target.response
+  if(text[0] == '{') {
   var tx = JSON.parse(text)
   var oReq = new XMLHttpRequest();
   var txloadmsg = document.querySelector('#txloadmsg')
   var uxtoid = tx.vin[0].txid
   oReq.addEventListener("load", (el) => {uxtoloaded(el, txid, uxtoid, tx)});
-  var url = "https://blockexplorer.com/api/tx/"+uxtoid
+  var url = txurl(source, uxtoid)
   oReq.open("GET", url)
   txloadmsg.innerHTML = "loading uxto..."
   oReq.send();
+  } else {
+  txloadmsg.innerHTML = "error..."+text
+  }
 }
 
 function uxtoloaded(el, txid, uxtoid, tx) {
@@ -282,8 +308,12 @@ function uxtoloaded(el, txid, uxtoid, tx) {
   txloadmsg.innerHTML = ""
   var text = el.target.response
   var uxto = JSON.parse(text)
-  var asmin = tx.vin[0].scriptSig.asm.replace(/\s+/g,"\n").split("\n").map(line => {if (line.substr(0,3) == "OP_") { return line } else {return "0x"+line}})
-  var asmout = uxto.vout[tx.vin[0].vout].scriptPubKey.asm.replace(/\s+/g,"\n").split("\n").map(line => {if (line.substr(0,3) == "OP_") { return line } else {return "0x"+line}})
+  var inScriptIdx = compileBytes(fromHex(tx.vin[0].scriptSig.hex))
+  var asmin = decompile(inScriptIdx).map(opToStr)
+//  var asmin = tx.vin[0].scriptSig.asm.replace(/\s+/g,"\n").split("\n").map(line => {if (line.substr(0,3) == "OP_") { return line } else {return "0x"+line}})
+  var outScriptIdx = compileBytes(fromHex(uxto.vout[tx.vin[0].vout].scriptPubKey.hex))
+  var asmout = decompile(outScriptIdx).map(opToStr)
+//  var asmout = uxto.vout[tx.vin[0].vout].scriptPubKey.asm.replace(/\s+/g,"\n").split("\n").map(line => {if (line.substr(0,3) == "OP_") { return line } else {return "0x"+line}})
   var inputText = document.querySelector('#codeinputs textarea')
   inputText.value = "# tx "+txid+"\n# in[0/"+Object.keys(tx.vin).length+"]\n"+asmin.join("\n") + "\n"+
                     "# tx "+uxtoid+"\n# out["+tx.vin[0].vout+"/"+Object.keys(uxto.vout).length+"] \n" + asmout.join("\n")
