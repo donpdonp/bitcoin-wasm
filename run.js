@@ -1,5 +1,5 @@
-console.log('loading bridge.wasm')
-var Module = require('./build/bridge.js')
+console.log('loading dogecoin.wasm')
+var Module = require('./build/dogecoin.js')
 
 var op_codes = ["1", "2", "OP_ADD"]
 
