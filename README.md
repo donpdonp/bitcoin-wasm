@@ -1,5 +1,8 @@
 Build the script/interpreter part of the bitcoin code base for webasm.
 
+## status
+2018-Mar-13 All opcode are supported except OP_CHECKSIG (openssl/ecdsa libs are not ported to webasm yet)
+
 ## build
 ```bash
 bitcoin-wasm $ make
