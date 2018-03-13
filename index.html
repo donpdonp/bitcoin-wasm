@@ -61,7 +61,7 @@ Bitcoin Script Editor
 </div>
 
 <div id="compiledscript">
-Compiled script bytes
+Compiled script
 <div id="codeout">
 </div>
 </div>
@@ -98,7 +98,7 @@ function inputOutputs(ops) {
   ops.forEach((op, i) => {
     var el = document.createElement('div')
     var msg = opToStr(op)
-    if (msg.substr(0,2) == "0x" && msg.length > 25) { msg = msg.substr(0,25)+"..."+msg.substr(msg.length-2, 2)+" (len "+(msg.length-2)/2+")" }
+    if (msg.substr(0,2) == "0x" && msg.length > 25) { msg = msg.substr(0,25)+"..."+msg.substr(msg.length-2, 2)+" (push "+(msg.length-2)/2+" bytes)" }
     if (msg.substr(0,3) == "OP_") {  msg = msg + " (opcode "+op[0].toString(16).toUpperCase()+")" }
     el.innerHTML = "<span class='lineno'>op "+(i+1)+":</span> "+msg
     outElements.appendChild(el)
@@ -115,6 +115,7 @@ function opToStr(op) {
     } else {
       var tempScript = compileBytes(op)
       msg = Module.ccall('scriptToString', 'string', ['number'], [tempScript])
+      if(op[0] == 0xac || op[0] == 0xad || op[0] == 0xae || op[0] == 0xaf) { msg = "#"+msg+" (unimplemented)" }
     }
   return msg
 }
@@ -310,10 +311,8 @@ function uxtoloaded(el, txid, uxtoid, tx) {
   var uxto = JSON.parse(text)
   var inScriptIdx = compileBytes(fromHex(tx.vin[0].scriptSig.hex))
   var asmin = decompile(inScriptIdx).map(opToStr)
-//  var asmin = tx.vin[0].scriptSig.asm.replace(/\s+/g,"\n").split("\n").map(line => {if (line.substr(0,3) == "OP_") { return line } else {return "0x"+line}})
   var outScriptIdx = compileBytes(fromHex(uxto.vout[tx.vin[0].vout].scriptPubKey.hex))
   var asmout = decompile(outScriptIdx).map(opToStr)
-//  var asmout = uxto.vout[tx.vin[0].vout].scriptPubKey.asm.replace(/\s+/g,"\n").split("\n").map(line => {if (line.substr(0,3) == "OP_") { return line } else {return "0x"+line}})
   var inputText = document.querySelector('#codeinputs textarea')
   inputText.value = "# tx "+txid+"\n# in[0/"+Object.keys(tx.vin).length+"]\n"+asmin.join("\n") + "\n"+
                     "# tx "+uxtoid+"\n# out["+tx.vin[0].vout+"/"+Object.keys(uxto.vout).length+"] \n" + asmout.join("\n")
