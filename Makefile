@@ -24,6 +24,10 @@ project_full_name = $(project_name) $(package_version)
 bitcoin_files = script/interpreter.cpp script/script.cpp script/script_error.cpp crypto/ripemd160.cpp crypto/sha1.cpp crypto/sha256.cpp primitives/transaction.cpp arith_uint256.cpp eccryptoverify.cpp uint256.cpp utilstrencodings.cpp pubkey.cpp ecwrapper.cpp
 bitcoin_files_full = $(addprefix $(bitcoin_source)/src/, $(bitcoin_files))
 
+openssl_source = openssl/
+openssl_files = crypto/mem.c
+openssl_files_full = $(addprefix $(openssl_source), $(openssl_files))
+
 # bridge functions
 exports = 'EXPORTED_FUNCTIONS=["_scriptRun","_scriptToString", "_stringCompile", "_decompile", "_version", "_byteCompile"]'
 export_extras = 'EXTRA_EXPORTED_RUNTIME_METHODS=["cwrap","ccall", "writeAsciiToMemory", "writeArrayToMemory", "Pointer_stringify", "getValue"]'
@@ -36,7 +40,7 @@ all: build $(build)/$(project_name).wasm
 #emscripten
 $(build)/$(project_name).wasm: src/*.cpp
 	@echo building for $(project_full_name)
-	emcc -s $(exports) -s $(export_extras) -s WASM=1 -D PROJECT_NAME="\"$(project_full_name)\"" -I$(bitcoin_source)/src -o $(build)/$(project_name).js $(bitcoin_files_full) $^
+	emcc -s $(exports) -s $(export_extras) -s WASM=1 -D PROJECT_NAME="\"$(project_full_name)\"" -o $(build)/$(project_name).js -I$(openssl_source) $(openssl_files_full) -I$(bitcoin_source)/src $(bitcoin_files_full) $^
 	ls -l $(build)/$(project_name)* 
 
 build:

@@ -3,6 +3,7 @@
 #include "script/script_error.h"
 #include "script/sign.h"
 #include "utilstrencodings.h"
+#include "openssl/crypto.h"
 
 #include "bridge.h"
 
