@@ -9,17 +9,17 @@
 
 extern "C" {
 
-stackout* 
+stackout*
 scriptRun(int idx)
 {
   printf("scriptRun #%d begin\n", idx);
   CScript c = scripts.at(idx);
-  //bool EvalScript(vector<vector<unsigned char> >& stack, const CScript& script, unsigned int flags, const BaseSignatureChecker& checker, ScriptError* serror)
   std::vector<std::vector<unsigned char> > stack;
   ScriptError error;
   CTransaction tx;
   int nIn = 0;
   const TransactionSignatureChecker& checker = TransactionSignatureChecker(&tx, nIn);
+  // EvalScript(stack, script, flags, signatureChecker, error)
   bool retval = EvalScript(stack, c, SCRIPT_VERIFY_P2SH, checker, &error);
   if (retval == 0) {
       printf("scriptRun FAIL: %s\n", ScriptErrorString(error));
@@ -32,8 +32,8 @@ scriptRun(int idx)
 }
 
 
-stackout* 
-stackToCharArray(std::vector<std::vector<unsigned char> > stack) 
+stackout*
+stackToCharArray(std::vector<std::vector<unsigned char> > stack)
 {
   stackout* bigStack = (stackout*)malloc(sizeof(stackout));
   int size = stack.size();
@@ -46,7 +46,7 @@ stackToCharArray(std::vector<std::vector<unsigned char> > stack)
   return bigStack;
 }
 
-char* 
+char*
 strvecToSizedCharPtr(std::vector<unsigned char>* strvec) {
   uint8_t vsize = strvec->size();
   char* c_copy = new char[vsize + 2];
@@ -55,7 +55,7 @@ strvecToSizedCharPtr(std::vector<unsigned char>* strvec) {
   return c_copy;
 }
 
-const int 
+const int
 byteCompile(unsigned char* scriptBytes, int len) {
   std::vector<unsigned char> strvec(scriptBytes, scriptBytes+len);
   CScript c = CScript(strvec.begin(), strvec.end());
@@ -63,7 +63,7 @@ byteCompile(unsigned char* scriptBytes, int len) {
   return scripts.size()-1;
 }
 
-const int 
+const int
 stringCompile(char** opcodeNames, int len)
 {
   printf("stringCompile %d opcode strings \n", len);
@@ -78,8 +78,8 @@ stringCompile(char** opcodeNames, int len)
   return scripts.size()-1;
 }
 
-void 
-encodeOp(CScript* c, char* opcodeName) 
+void
+encodeOp(CScript* c, char* opcodeName)
 {
   if(strlen(opcodeName) > 0) {
     if(strlen(opcodeName) >= 2 && opcodeName[0] == 'O' && opcodeName[1] == 'P') {
@@ -133,14 +133,14 @@ decompile(int idx) {
   return code;
 }
 
-const char* 
+const char*
 scriptToString(int idx)
 {
     return scripts.at(idx).ToString().c_str();
 }
 
-const 
-opcodetype opStringToOpCode(char* opName) 
+const
+opcodetype opStringToOpCode(char* opName)
 {
   for(int i=0; i <= 0xff; i++) {
     opcodetype opcode = (opcodetype)i;
@@ -152,19 +152,19 @@ opcodetype opStringToOpCode(char* opName)
   return OP_INVALIDOPCODE;
 }
 
-bool 
+bool
 is_digits(const std::string &str)
 {
   return std::all_of(str.begin(), str.end(), digitCheck ); // C++11
 }
 
-int 
+int
 digitCheck(char ch) {
   return ::isdigit(ch) || ch == '-';
 }
 
-int 
-scriptCount(CScript c) 
+int
+scriptCount(CScript c)
 {
   int count = 0;
   CScript::const_iterator pc = c.begin();
@@ -186,9 +186,6 @@ scriptCount(CScript c)
 const char* version() {
   std::string str;
   str += PROJECT_NAME;
-/*
-  str += " ";
-  str += PACKAGE_VERSION; */
 /*
   str += "v";
   str += std::to_string(CLIENT_VERSION_MAJOR);
