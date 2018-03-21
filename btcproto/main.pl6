@@ -6,13 +6,13 @@ sub MAIN ( Str $host ) {
   my $conn = IO::Socket::INET.new(host => $host, port => 8333);
   say "connected!";
   
-  my $hello = push("hello", Buf.new());
+  my $hello = version();
   $conn.write($hello);
   say "hello sent";
   say $hello;
   
-  say $conn.read(1);
   say "read";
+  say $conn.read(24);
   
   $conn.close;
 }
