@@ -1,9 +1,9 @@
 #include "config/bitcoin-config.h"
+#include "openssl/crypto.h"
 #include "script/script.h"
 #include "script/script_error.h"
 #include "script/sign.h"
 #include "utilstrencodings.h"
-#include "openssl/crypto.h"
 
 #include "bridge.h"
 
@@ -14,32 +14,32 @@ scriptRun(int idx)
 {
   printf("scriptRun #%d begin\n", idx);
   CScript c = scripts.at(idx);
-  std::vector<std::vector<unsigned char> > stack;
+  std::vector<std::vector<unsigned char>> stack;
   ScriptError error;
   CTransaction tx;
   int nIn = 0;
-  const TransactionSignatureChecker& checker = TransactionSignatureChecker(&tx, nIn);
+  const TransactionSignatureChecker& checker =
+    TransactionSignatureChecker(&tx, nIn);
   // EvalScript(stack, script, flags, signatureChecker, error)
   bool retval = EvalScript(stack, c, SCRIPT_VERIFY_P2SH, checker, &error);
   if (retval == 0) {
-      printf("scriptRun FAIL: %s\n", ScriptErrorString(error));
+    printf("scriptRun FAIL: %s\n", ScriptErrorString(error));
   } else {
-      printf("scriptRun GOOD\n");
+    printf("scriptRun GOOD\n");
   }
   stackout* stackRun = stackToCharArray(stack);
   stackRun->success = retval;
   return stackRun;
 }
 
-
 stackout*
-stackToCharArray(std::vector<std::vector<unsigned char> > stack)
+stackToCharArray(std::vector<std::vector<unsigned char>> stack)
 {
   stackout* bigStack = (stackout*)malloc(sizeof(stackout));
   int size = stack.size();
-  bigStack->stack = (char**)malloc(sizeof(char*)*size);
+  bigStack->stack = (char**)malloc(sizeof(char*) * size);
   bigStack->len = size;
-  for(std::vector<unsigned char>::size_type i = 0; i != size; i++) {
+  for (std::vector<unsigned char>::size_type i = 0; i != size; i++) {
     std::vector<unsigned char> strvec = stack.at(i);
     bigStack->stack[i] = strvecToSizedCharPtr(&strvec);
   }
@@ -47,20 +47,22 @@ stackToCharArray(std::vector<std::vector<unsigned char> > stack)
 }
 
 char*
-strvecToSizedCharPtr(std::vector<unsigned char>* strvec) {
+strvecToSizedCharPtr(std::vector<unsigned char>* strvec)
+{
   uint8_t vsize = strvec->size();
   char* c_copy = new char[vsize + 2];
-  memcpy(c_copy+1, (char*)strvec->data(), vsize );
+  memcpy(c_copy + 1, (char*)strvec->data(), vsize);
   c_copy[0] = vsize;
   return c_copy;
 }
 
 const int
-byteCompile(unsigned char* scriptBytes, int len) {
-  std::vector<unsigned char> strvec(scriptBytes, scriptBytes+len);
+byteCompile(unsigned char* scriptBytes, int len)
+{
+  std::vector<unsigned char> strvec(scriptBytes, scriptBytes + len);
   CScript c = CScript(strvec.begin(), strvec.end());
   scripts.push_back(c);
-  return scripts.size()-1;
+  return scripts.size() - 1;
 }
 
 const int
@@ -68,34 +70,36 @@ stringCompile(char** opcodeNames, int len)
 {
   printf("stringCompile %d opcode strings \n", len);
   CScript c = CScript();
-  for(int i=0; i<len; i++) {
+  for (int i = 0; i < len; i++) {
     char* opcodeName = opcodeNames[i];
     printf("#%d encoding %s \n", i, opcodeName);
     encodeOp(&c, opcodeName);
   }
   printf("script opcount: %d hex: %s\n", scriptCount(c), HexStr(c).c_str());
   scripts.push_back(c);
-  return scripts.size()-1;
+  return scripts.size() - 1;
 }
 
 void
 encodeOp(CScript* c, char* opcodeName)
 {
-  if(strlen(opcodeName) > 0) {
-    if(strlen(opcodeName) >= 2 && opcodeName[0] == 'O' && opcodeName[1] == 'P') {
+  if (strlen(opcodeName) > 0) {
+    if (strlen(opcodeName) >= 2 && opcodeName[0] == 'O' &&
+        opcodeName[1] == 'P') {
       opcodetype opcode = opStringToOpCode(opcodeName);
-      if(opcode != OP_INVALIDOPCODE) {
+      if (opcode != OP_INVALIDOPCODE) {
         *c << opcode;
         printf("%x %s opcode\n", opcode, GetOpName(opcode));
       } else {
         printf("%s BAD opcode\n", opcodeName);
       }
-    } else if (strlen(opcodeName) > 10 && opcodeName[0] == '0' && opcodeName[1] == 'X') { // more than 4 bytes is a data value
+    } else if (strlen(opcodeName) > 10 && opcodeName[0] == '0' &&
+               opcodeName[1] == 'X') { // more than 4 bytes is a data value
       std::vector<unsigned char> byteString;
-      for(int i=2; i < strlen(opcodeName); i+=2) {
+      for (int i = 2; i < strlen(opcodeName); i += 2) {
         char minichar[5] = "0x";
         minichar[2] = opcodeName[i];
-        minichar[3] = opcodeName[i+1];
+        minichar[3] = opcodeName[i + 1];
         minichar[4] = 0;
         char c = (char)std::stoi(minichar, 0, 16);
         byteString.push_back(c);
@@ -112,15 +116,16 @@ encodeOp(CScript* c, char* opcodeName)
 }
 
 codeout*
-decompile(int idx) {
+decompile(int idx)
+{
   CScript c = scripts.at(idx);
   codeout* code = (codeout*)malloc(sizeof(codeout));
   code->len = scriptCount(c);
-  code->lines = (char**)malloc(sizeof(char*)*code->len);
+  code->lines = (char**)malloc(sizeof(char*) * code->len);
   CScript::const_iterator pc = c.begin();
   opcodetype opcode;
   std::vector<unsigned char> vch;
-  for (int i=0; pc < c.end(); i++) {
+  for (int i = 0; pc < c.end(); i++) {
     if (!c.GetOp(pc, opcode, vch)) {
       printf("Script.GetOp err step %d opcode return %u\n", i, opcode);
     } else {
@@ -136,16 +141,16 @@ decompile(int idx) {
 const char*
 scriptToString(int idx)
 {
-    return scripts.at(idx).ToString().c_str();
+  return scripts.at(idx).ToString().c_str();
 }
 
-const
-opcodetype opStringToOpCode(char* opName)
+const opcodetype
+opStringToOpCode(char* opName)
 {
-  for(int i=0; i <= 0xff; i++) {
+  for (int i = 0; i <= 0xff; i++) {
     opcodetype opcode = (opcodetype)i;
     const char* maybeName = GetOpName(opcode);
-    if(strcmp(opName, maybeName) == 0) {
+    if (strcmp(opName, maybeName) == 0) {
       return opcode;
     }
   }
@@ -153,13 +158,14 @@ opcodetype opStringToOpCode(char* opName)
 }
 
 bool
-is_digits(const std::string &str)
+is_digits(const std::string& str)
 {
-  return std::all_of(str.begin(), str.end(), digitCheck ); // C++11
+  return std::all_of(str.begin(), str.end(), digitCheck); // C++11
 }
 
 int
-digitCheck(char ch) {
+digitCheck(char ch)
+{
   return ::isdigit(ch) || ch == '-';
 }
 
@@ -183,21 +189,21 @@ scriptCount(CScript c)
   return count;
 }
 
-const char* version() {
+const char*
+version()
+{
   std::string str;
   str += PROJECT_NAME;
-/*
-  str += "v";
-  str += std::to_string(CLIENT_VERSION_MAJOR);
-  str += ".";
-  str += std::to_string(CLIENT_VERSION_MINOR);
-  str += ".";
-  str += std::to_string(CLIENT_VERSION_REVISION);
-  str += ".";
-  str += std::to_string(CLIENT_VERSION_BUILD);
-*/
+  /*
+    str += "v";
+    str += std::to_string(CLIENT_VERSION_MAJOR);
+    str += ".";
+    str += std::to_string(CLIENT_VERSION_MINOR);
+    str += ".";
+    str += std::to_string(CLIENT_VERSION_REVISION);
+    str += ".";
+    str += std::to_string(CLIENT_VERSION_BUILD);
+  */
   return str.c_str();
 }
-
 }
-
