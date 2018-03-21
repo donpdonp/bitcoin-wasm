@@ -5,8 +5,10 @@ sub MAIN ( Str $host ) {
   say "connecting $host";
   my $conn = IO::Socket::INET.new(host => $host, port => 8333);
   
-  my $version = version();
-  say "send version payload ", $version.elems-24;
+  my $protoversion = 70004;
+  my $useragent = "/perl6:0.0.1/";
+  my $version = version($protoversion, $useragent, 500000);
+  say "send version {$$protoversion} {$useragent} payload ", $version.elems-24;
   $conn.write($version);
   
   say "read";

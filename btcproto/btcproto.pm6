@@ -45,17 +45,16 @@ sub netAddress($addr) {
           0x0a, 0x00, 0x00, $addr, 0x20, 0x8D)
 }
 
-sub version is export {
+sub version($version, $user_agent, $blockheight) is export {
   my $payload = Buf.new();
-  $payload.append(int32Buf(70004)); #version
+  $payload.append(int32Buf($version)); #version
   $payload.append(int64Buf(7)); #services
-  $payload.append(int64Buf(1521609933)); #timestamp
+  $payload.append(int64Buf(DateTime.now.posix)); #timestamp
   $payload.append(netAddress(1)); #Recipient
   $payload.append(netAddress(2)); #Sender
-  #$payload.append(int64Buf(1521609933)); #nodeID/nonce
-  $payload.append(Buf.new(0x3B, 0x2E, 0xB3, 0x5D, 0x8C, 0xE6, 0x17, 0x65)); #nodeID/nonce
-  $payload.append(strToBuf("/Satoshi:0.7.2/")); #client version string
-  $payload.append(int32Buf(212672)); #blockheight
+  $payload.append(int64Buf(1521609933)); #nodeID/nonce
+  $payload.append(strToBuf($user_agent)); #client version string
+  $payload.append(int32Buf($blockheight)); #blockheight
   push("version", $payload);
 }
 
