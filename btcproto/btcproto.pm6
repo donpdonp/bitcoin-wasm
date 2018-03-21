@@ -45,6 +45,16 @@ sub netAddress($addr) {
           0x0a, 0x00, 0x00, $addr, 0x20, 0x8D)
 }
 
+sub decodeVersion($b) is export {
+  my $s = $b.subbuf(81, $b[80]);
+  bufToStr($s);
+}
+
+sub verack is export {
+  my $payload = Buf.new();
+  push("verack", $payload);
+}
+
 sub version($version, $user_agent, $blockheight) is export {
   my $payload = Buf.new();
   $payload.append(int32Buf($version)); #version
@@ -66,15 +76,14 @@ sub networkName(Buf $id) {
   "Bitcoin mainnet" if $id == Buf.new(0xf9, 0xbe, 0xb4, 0xd9);
 }
 
-sub command($strZ) {
-  $strZ.decode('ISO-8859-1')
+sub bufToStr($buf) {
+  $buf.decode('ISO-8859-1')
 }
 
 sub decodeHeader(Buf $buf) is export {
-  say "Response:", $buf;
   #unpack-uint32 $buf.subbuf(16,4), :byte-order(little-endian);
   my $rlen = $buf[16].Int;
-  say networkName($buf.subbuf(0,4)), " Command:", command($buf.subbuf(4,12)), " Len:", $rlen;
+  say networkName($buf.subbuf(0,4)), " Command:", bufToStr($buf.subbuf(4,12)), " PayloadLen:", $rlen;
   $rlen
 }
 

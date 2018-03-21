@@ -5,18 +5,33 @@ sub MAIN ( Str $host ) {
   say "connecting $host";
   my $conn = IO::Socket::INET.new(host => $host, port => 8333);
   
-  my $protoversion = 70004;
+  my Buf $msg;
+  my $protoversion = 100004;
   my $useragent = "/perl6:0.0.1/";
-  my $version = version($protoversion, $useragent, 500000);
-  say "send version {$$protoversion} {$useragent} payload ", $version.elems-24;
-  $conn.write($version);
+  $msg = version($protoversion, $useragent, 500000);
+  say "send version {$protoversion} {$useragent} payload ", $msg.elems-24;
+  $conn.write($msg);
   
   say "read";
   my $len =  decodeHeader($conn.read(24));
-  say "received ", $len;
   my $recv = $conn.read($len);
-  say $recv;
-  say $recv.decode('ISO-8859-1');
+  say "client name: ", decodeVersion($recv);
+
+  $msg = verack();
+  say "verack";
+  $conn.write($msg);
+  say "read";
+  $len =  decodeHeader($conn.read(24));
+
+  $msg = getinfo();
+  say "getinfo";
+  $conn.write($msg);
+  say "read";
+  $len =  decodeHeader($conn.read(24));
+  if $len > 1 {
+    $recv = $conn.read($len);
+    say $recv.decode('ISO-8859-1');
+  }
   
   $conn.close;
 }
