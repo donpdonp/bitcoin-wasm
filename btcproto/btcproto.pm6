@@ -1,19 +1,15 @@
 use v6.c;
 use Digest::SHA;
-use Numeric::Pack :ALL;
+use Numeric::Pack :ints;
+
+module btcproto {
 
 sub push($verb, $payload) {
   my $hello = Buf.new(0xf9, 0xbe, 0xb4, 0xd9); # Bitcoin Mainnet
-  say "hello ", $hello;
   my $command = strPad($verb);
-  say "command ", $command;
   my $payload_length = int32Buf($payload.elems);
-  say "payload_length ", $payload_length;
-  say "payload ", $payload;
-  
 
   my $payload_checksum = sha256(sha256($payload)).subbuf(0,4);
-  say "payload_checksum ", $payload_checksum;
 
   my $msg = Buf.new();
   $msg.append($hello);
@@ -28,11 +24,11 @@ sub strPad(Str $s) {
 }
 
 sub int32Buf($int) {
-  pack-int32 $int, :byte-order(little-endian);;
+  pack-uint32 $int, :byte-order(little-endian);;
 }
 
 sub int64Buf($int) {
-  pack-int64 $int, :byte-order(little-endian);;
+  pack-uint64 $int, :byte-order(little-endian);;
 }
 
 sub strToBuf($s) {
@@ -44,20 +40,18 @@ sub strToBuf($s) {
 
 
 sub netAddress($addr) {
-  Buf.new(0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  Buf.new(0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
           0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 
-          0x00, 0x00, 0x00, 0x00, 0x00, 0x00)
+          0x0a, 0x00, 0x00, $addr, 0x20, 0x8D)
 }
 
 sub version is export {
   my $payload = Buf.new();
-  #$payload.append(int32Buf(70004)); #version
-  $payload.append(int32Buf(60002)); #version
-  $payload.append(int64Buf(1)); #services
-  #$payload.append(int64Buf(1521609933)); #timestamp
-  $payload.append(Buf.new(0x11, 0xB2, 0xD0, 0x50, 0, 0, 0, 0)); #timestamp
-  $payload.append(netAddress("127.0.0.1")); #Recipient
-  $payload.append(netAddress("127.0.0.1")); #Sender
+  $payload.append(int32Buf(70004)); #version
+  $payload.append(int64Buf(7)); #services
+  $payload.append(int64Buf(1521609933)); #timestamp
+  $payload.append(netAddress(1)); #Recipient
+  $payload.append(netAddress(2)); #Sender
   #$payload.append(int64Buf(1521609933)); #nodeID/nonce
   $payload.append(Buf.new(0x3B, 0x2E, 0xB3, 0x5D, 0x8C, 0xE6, 0x17, 0x65)); #nodeID/nonce
   $payload.append(strToBuf("/Satoshi:0.7.2/")); #client version string
@@ -67,4 +61,22 @@ sub version is export {
 
 sub getinfo is export {
   push("getinfo", Buf.new());
+}
+
+sub networkName(Buf $id) {
+  "Bitcoin mainnet" if $id == Buf.new(0xf9, 0xbe, 0xb4, 0xd9);
+}
+
+sub command($strZ) {
+  $strZ.decode('ISO-8859-1')
+}
+
+sub decodeHeader(Buf $buf) is export {
+  say "Response:", $buf;
+  #unpack-uint32 $buf.subbuf(16,4), :byte-order(little-endian);
+  my $rlen = $buf[16].Int;
+  say networkName($buf.subbuf(0,4)), " Command:", command($buf.subbuf(4,12)), " Len:", $rlen;
+  $rlen
+}
+
 }
