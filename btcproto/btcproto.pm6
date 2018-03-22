@@ -73,7 +73,7 @@ sub getinfo is export {
 }
 
 sub networkName(Buf $id) {
-  "Bitcoin mainnet" if $id == Buf.new(0xf9, 0xbe, 0xb4, 0xd9);
+  "Bitcoin" if $id == Buf.new(0xf9, 0xbe, 0xb4, 0xd9);
 }
 
 sub bufToStr($buf) {
@@ -84,7 +84,7 @@ sub decodeHeader(Buf $buf) is export {
   #unpack-uint32 $buf.subbuf(16,4), :byte-order(little-endian);
   my $rlen = $buf[16].Int;
   my $command = bufToStr($buf.subbuf(4,12));
-  say networkName($buf.subbuf(0,4)), " Command: {$command} PayloadLen: {$rlen}";
+  say "[{networkName($buf.subbuf(0,4))}] Command: {$command} PayloadLen: {$rlen}";
   [$command, $rlen]
 }
 

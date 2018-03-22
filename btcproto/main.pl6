@@ -7,10 +7,10 @@ sub MAIN ( Str $host =  "seed.bitcoin.sipa.be" ) {
   my $supplier = Supplier.new;
   my $supply = $supplier.Supply;
   my $socket_tube = Channel.new;
+  my $socket;
 
   IO::Socket::Async.connect($host, 8333).then( -> $promise {
-    my $socket = $promise.result;
-    $socket_tube.send($socket);
+    $socket = $promise.result;
     $supplier.emit('connect');
     my $msgbuf = Buf.new;
     my $gotHeader = False;
@@ -40,17 +40,26 @@ sub MAIN ( Str $host =  "seed.bitcoin.sipa.be" ) {
   });
 
   $supply.tap( -> $inmsg {
-    say "state tap {$inmsg.perl}";
+    say "state receive {$inmsg.perl}";
     if $inmsg eq "connect" {
       my $protoversion = 100004;
       my $useragent = "/perl6:0.0.1/";
       my $msg = version($protoversion, $useragent, 500000);
       say "send version {$protoversion} {$useragent} payload {$msg.elems-24}";
-      my $socket = $socket_tube.receive;
       $socket.write($msg);
     }
-    #verack
-    #getinfo
+
+    if $inmsg eq "version\0\0\0\0\0" {
+      my $msg = verack;
+      say "send verack";
+      $socket.write($msg);
+    }
+
+    if $inmsg eq "verack\0\0\0\0\0\0" {
+      my $msg = getinfo;
+      say "send getinfo";
+      $socket.write($msg);
+    }
   });
 
   Channel.new.receive; # wait
