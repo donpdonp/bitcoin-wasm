@@ -83,8 +83,9 @@ sub bufToStr($buf) {
 sub decodeHeader(Buf $buf) is export {
   #unpack-uint32 $buf.subbuf(16,4), :byte-order(little-endian);
   my $rlen = $buf[16].Int;
-  say networkName($buf.subbuf(0,4)), " Command:", bufToStr($buf.subbuf(4,12)), " PayloadLen:", $rlen;
-  $rlen
+  my $command = bufToStr($buf.subbuf(4,12));
+  say networkName($buf.subbuf(0,4)), " Command: {$command} PayloadLen: {$rlen}";
+  [$command, $rlen]
 }
 
 }
