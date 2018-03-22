@@ -3,35 +3,31 @@ use btcproto;
 
 sub MAIN ( Str $host =  "seed.bitcoin.sipa.be" ) {
   say "connecting $host";
-  my $conn = IO::Socket::INET.new(host => $host, port => 8333);
 
-  my Buf $msg;
-  my $protoversion = 100004;
-  my $useragent = "/perl6:0.0.1/";
-  $msg = version($protoversion, $useragent, 500000);
-  say "send version {$protoversion} {$useragent} payload {$msg.elems-24}";
-  $conn.write($msg);
+  my $supplier = Supplier.new;
+  my $supply = $supplier.Supply;
+  my $socket_tube = Channel.new;
 
-  say "read";
-  my $len =  decodeHeader($conn.read(24));
-  my $recv = $conn.read($len);
-  say "client name: ", decodeVersion($recv);
+  IO::Socket::Async.connect($host, 8333).then( -> $promise {
+    my $socket = $promise.result;
+    $socket_tube.send($socket);
+    $supplier.emit(['connect', Buf.new]);
+    $socket.Supply(:bin).tap( -> $buf { 
+      my $payload_len = decodeHeader($buf);
+    });
+  });
 
-  $msg = verack();
-  say "verack";
-  $conn.write($msg);
-  say "read";
-  $len =  decodeHeader($conn.read(24));
+  $supply.tap( -> $inmsg {
+    say "state tap {$inmsg}";
+    my $protoversion = 100004;
+    my $useragent = "/perl6:0.0.1/";
+    my $msg = version($protoversion, $useragent, 500000);
+    say "send version {$protoversion} {$useragent} payload {$msg.elems-24}";
+    my $socket = $socket_tube.receive;
+    $socket.write($msg);
+    #verack
+    #getinfo
+  });
 
-  $msg = getinfo();
-  say "getinfo";
-  $conn.write($msg);
-  say "read";
-  $len =  decodeHeader($conn.read(24));
-  if $len > 1 {
-    $recv = $conn.read($len);
-    say $recv.decode('ISO-8859-1');
-  }
-
-  $conn.close;
+  Channel.new.receive; # wait
 }
