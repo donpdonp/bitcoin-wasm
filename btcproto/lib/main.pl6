@@ -10,9 +10,10 @@ sub MAIN ( Str $host =  "seed.bitcoin.sipa.be" ) {
   my $socket;
 
   IO::Socket::Async.connect($host, 8333).then( -> $promise {
+    CATCH { default { say .^name, ': ', .Str } };
     $socket = $promise.result;
     $supplier.emit('connect');
-    read_loop($socket, $supplier, $payload_tube)
+    read_loop($socket, $supplier, $payload_tube);
   });
 
   $supply.tap( -> $inmsg {
@@ -41,7 +42,7 @@ sub MAIN ( Str $host =  "seed.bitcoin.sipa.be" ) {
   Channel.new.receive; # wait
 }
 
-sub read_loop($socket, $supplier, $payload_tube) {
+sub read_loop(IO::Socket::Async $socket, Supplier $supplier, Channel $payload_tube) {
     my $msgbuf = Buf.new;
     my $gotHeader = False;
     my $verb = "";
