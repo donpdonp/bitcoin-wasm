@@ -77,7 +77,7 @@ sub networkName(Buf $id) {
 }
 
 sub bufToStr($buf) {
-  $buf.decode('ISO-8859-1')
+  join "", $buf.map: { last when 0; $_.chr  }
 }
 
 sub decodeHeader(Buf $buf) is export {

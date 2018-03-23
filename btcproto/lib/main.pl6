@@ -18,14 +18,12 @@ sub MAIN ( Str $host =  "seed.bitcoin.sipa.be" ) {
 
   $supply.tap( -> $inmsg {
     dispatch($inmsg, $socket, $payload_tube)
-
   });
 
-  Channel.new.receive; # wait
+  Channel.new.receive; # wait forever
 }
 
 sub dispatch($inmsg, $socket, $payload_tube) {
-    say "state receive {$inmsg.perl}";
     if $inmsg eq "connect" {
       my $protoversion = 100004;
       my $useragent = "/perl6:0.0.1/";
@@ -34,14 +32,14 @@ sub dispatch($inmsg, $socket, $payload_tube) {
       $socket.write($msg);
     }
 
-    if $inmsg eq "version\0\0\0\0\0" {
+    if $inmsg eq "version" {
       my $payload = $payload_tube.receive;
       my $msg = verack;
       say "got version with payload size {$payload.elems}. send verack";
       $socket.write($msg);
     }
 
-    if $inmsg eq "verack\0\0\0\0\0\0" {
+    if $inmsg eq "verack" {
       my $msg = getinfo;
       say "send getinfo";
       $socket.write($msg);
@@ -67,7 +65,7 @@ sub read_loop(IO::Socket::Async $socket, Supplier $supplier, Channel $payload_tu
       }
       if $msgbuf.elems >= $payload_len {
         my $payload = bufTrim($msgbuf, $payload_len);
-          say "Payload {$payload.elems} of {$payload_len}";
+          say "Payload length {$payload.elems}/{$payload_len}";
         $gotHeader = False;
         #payload processing
         $payload_tube.send($payload);
