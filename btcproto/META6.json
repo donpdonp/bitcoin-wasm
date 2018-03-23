@@ -1,0 +1,3 @@
+{
+"depends" : ["Digest::SHA256::Native", "Numeric::Pack" ]
+}

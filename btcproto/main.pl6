@@ -6,37 +6,13 @@ sub MAIN ( Str $host =  "seed.bitcoin.sipa.be" ) {
 
   my $supplier = Supplier.new;
   my $supply = $supplier.Supply;
-  my $socket_tube = Channel.new;
+  my $payload_tube = Channel.new;
   my $socket;
 
   IO::Socket::Async.connect($host, 8333).then( -> $promise {
     $socket = $promise.result;
     $supplier.emit('connect');
-    my $msgbuf = Buf.new;
-    my $gotHeader = False;
-    my $verb = "";
-    my $payload_len = 0;
-    $socket.Supply(:bin).tap( -> $buf { 
-      $msgbuf.append($buf);
-      if !$gotHeader {
-        if $msgbuf.elems >= 24 {
-          my $header = bufTrim($msgbuf, 24);
-          my @header = decodeHeader($header);
-          $verb = @header[0];
-          $payload_len = @header[1];
-          $gotHeader = True;
-          say "Verb: {$verb}  Payload size: {$payload_len}";
-        }
-      }
-      if $msgbuf.elems >= $payload_len {
-        my $payload = bufTrim($msgbuf, $payload_len);
-          say "Payload actual: {$payload.elems}  Payloa expected: {$payload_len}";
-        $gotHeader = False;
-        #payload processing
-        $socket_tube.send($payload);
-        $supplier.emit($verb);
-      }
-    });
+    read_loop($socket, $supplier, $payload_tube)
   });
 
   $supply.tap( -> $inmsg {
@@ -63,6 +39,34 @@ sub MAIN ( Str $host =  "seed.bitcoin.sipa.be" ) {
   });
 
   Channel.new.receive; # wait
+}
+
+sub read_loop($socket, $supplier, $payload_tube) {
+    my $msgbuf = Buf.new;
+    my $gotHeader = False;
+    my $verb = "";
+    my $payload_len = 0;
+    $socket.Supply(:bin).tap( -> $buf {
+      $msgbuf.append($buf);
+      if !$gotHeader {
+        if $msgbuf.elems >= 24 {
+          my $header = bufTrim($msgbuf, 24);
+          my @header = decodeHeader($header);
+          $verb = @header[0];
+          $payload_len = @header[1];
+          $gotHeader = True;
+          say "Verb: {$verb}  Payload size: {$payload_len}";
+        }
+      }
+      if $msgbuf.elems >= $payload_len {
+        my $payload = bufTrim($msgbuf, $payload_len);
+          say "Payload actual: {$payload.elems}  Payloa expected: {$payload_len}";
+        $gotHeader = False;
+        #payload processing
+        $payload_tube.send($payload);
+        $supplier.emit($verb);
+      }
+    });
 }
 
 sub bufTrim($msgbuf, $payload_len) {
