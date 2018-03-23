@@ -56,7 +56,7 @@ sub read_loop(IO::Socket::Async $socket, Supplier $supplier, Channel $payload_tu
       if !$gotHeader {
         if $msgbuf.elems >= 24 {
           my $header = bufTrim($msgbuf, 24);
-          my @header = decodeHeader($header);
+          my @header = btcproto::decodeHeader($header);
           $verb = @header[0];
           $payload_len = @header[1];
           $gotHeader = True;

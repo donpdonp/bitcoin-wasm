@@ -80,7 +80,7 @@ sub bufToStr($buf) {
   join "", $buf.map: { last when 0; $_.chr  }
 }
 
-sub decodeHeader(Buf $buf) is export {
+our sub decodeHeader(Buf $buf) {
   #unpack-uint32 $buf.subbuf(16,4), :byte-order(little-endian);
   my $rlen = $buf[16].Int;
   my $command = bufToStr($buf.subbuf(4,12));
