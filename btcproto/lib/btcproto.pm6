@@ -2,6 +2,8 @@ use v6.c;
 use Digest::SHA256::Native;
 use Numeric::Pack :ints;
 
+use btcproto::version;
+
 module btcproto {
 
 sub push($verb, $payload) {
@@ -34,7 +36,7 @@ sub int64Buf($int) {
 sub strToBuf($s) {
   my $buf = Buf.new();
   $buf.append($s.chars);
-  $buf.append($s.encode('ISO-8859-1'));
+  $buf.append($s.encode('ascii'));
   $buf;
 }
 
@@ -45,9 +47,10 @@ sub netAddress($addr) {
           0x0a, 0x00, 0x00, $addr, 0x20, 0x8D)
 }
 
-sub decodeVersion($b) is export {
-  my $s = $b.subbuf(81, $b[80]);
-  bufToStr($s);
+our sub decodeVersion($b) {
+  my $v = btcproto::version::Version.new;
+  $v.fromBuf($b);
+  $v
 }
 
 sub verack is export {
@@ -76,7 +79,7 @@ sub networkName(Buf $id) {
   "Bitcoin" if $id == Buf.new(0xf9, 0xbe, 0xb4, 0xd9);
 }
 
-sub bufToStr($buf) {
+our sub bufToStr($buf) {
   join "", $buf.map: { last when 0; $_.chr  }
 }
 

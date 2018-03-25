@@ -2,13 +2,13 @@ use v6.c;
 use btcproto;
 
 sub MAIN ( Str $host =  "seed.bitcoin.sipa.be" ) {
-  say "connecting $host";
 
   my $supplier = Supplier.new;
   my $supply = $supplier.Supply;
   my $payload_tube = Channel.new;
   my $socket;
 
+  say "connecting $host";
   IO::Socket::Async.connect($host, 8333).then( -> $promise {
     CATCH { default { say .^name, ': ', .Str } };
     $socket = $promise.result;
@@ -34,8 +34,12 @@ sub dispatch($inmsg, $socket, $payload_tube) {
 
     if $inmsg eq "version" {
       my $payload = $payload_tube.receive;
+      my $v = btcproto::version::Version.new;
+      $v.fromBuf($payload);
+      say "Connected to: {$v.user_agent} #{$v.block_height}";
+
       my $msg = verack;
-      say "got version with payload size {$payload.elems}. send verack";
+      say "send verack";
       $socket.write($msg);
     }
 
