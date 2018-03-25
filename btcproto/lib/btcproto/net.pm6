@@ -1,30 +1,9 @@
-use v6.c;
-use lib './lib';
+use v6;
 use btcproto;
 
-sub MAIN ( Str $host =  "seed.bitcoin.sipa.be" ) {
+module btcproto::net {
 
-  my $supplier = Supplier.new;
-  my $supply = $supplier.Supply;
-  my $payload_tube = Channel.new;
-  my $socket;
-
-  say "connecting $host";
-  IO::Socket::Async.connect($host, 8333).then( -> $promise {
-    CATCH { default { say .^name, ': ', .Str } };
-    $socket = $promise.result;
-    $supplier.emit('connect');
-    read_loop($socket, $supplier, $payload_tube);
-  });
-
-  $supply.tap( -> $inmsg {
-    dispatch($inmsg, $socket, $payload_tube)
-  });
-
-  Channel.new.receive; # wait forever
-}
-
-sub dispatch($inmsg, $socket, $payload_tube) {
+our sub dispatch($inmsg, $socket, $payload_tube) {
     if $inmsg eq "connect" {
       my $protoversion = 100004;
       my $useragent = "/perl6:0.0.1/";
@@ -51,7 +30,7 @@ sub dispatch($inmsg, $socket, $payload_tube) {
     }
 }
 
-sub read_loop(IO::Socket::Async $socket, Supplier $supplier, Channel $payload_tube) {
+our sub read_loop(IO::Socket::Async $socket, Supplier $supplier, Channel $payload_tube) {
     my $msgbuf = Buf.new;
     my $gotHeader = False;
     my $verb = "";
@@ -83,4 +62,6 @@ sub bufTrim($msgbuf, $payload_len) {
   my $payload = $msgbuf.subbuf(0, $payload_len);
   subbuf-rw($msgbuf, 0, $payload_len) = Buf.new;
   $payload
+}
+
 }
