@@ -1,0 +1,11 @@
+#!/usr/bin/env perl6
+
+sub MAIN ( Str $host =  "seed.bitcoin.sipa.be" ) {
+  say "connecting $host";
+}
+
+=begin pod
+=head1 USAGE
+btcproto
+=end pod
+

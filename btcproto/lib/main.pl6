@@ -1,4 +1,5 @@
 use v6.c;
+use lib './lib';
 use btcproto;
 
 sub MAIN ( Str $host =  "seed.bitcoin.sipa.be" ) {
