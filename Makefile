@@ -64,6 +64,7 @@ openssl_flags = -I$(openssl_source) -I$(openssl_source)/crypto -I$(openssl_sourc
 # bridge functions
 exports = 'EXPORTED_FUNCTIONS=["_scriptRun","_scriptToString", "_stringCompile", "_decompile", "_version", "_byteCompile"]'
 export_extras = 'EXTRA_EXPORTED_RUNTIME_METHODS=["cwrap","ccall", "writeAsciiToMemory", "writeArrayToMemory", "Pointer_stringify", "getValue"]'
+binaryen_methods = 'BINARYEN_METHOD="native-wasm,interpret-binary"'
 
 # misc
 build = ./build
@@ -73,7 +74,7 @@ all: build $(build)/$(project_name).wasm
 #emscripten
 $(build)/$(project_name).wasm: src/*.cpp
 	@echo building for $(project_full_name)
-	emcc -s $(exports) -s $(export_extras) -s WASM=1 -D PROJECT_NAME="\"$(project_full_name)\"" -o $(build)/$(project_name).js $(openssl_flags) -I$(bitcoin_source)/src $(bitcoin_files_full) $^
+	emcc -s $(exports) -s $(export_extras) -s $(binaryen_methods) -s WASM=1 -D PROJECT_NAME="\"$(project_full_name)\"" -o $(build)/$(project_name).js $(openssl_flags) -I$(bitcoin_source)/src $(bitcoin_files_full) $^
 	ls -l $(build)/$(project_name)* 
 
 build:
