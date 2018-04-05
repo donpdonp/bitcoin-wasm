@@ -14,7 +14,7 @@ scriptRun(int idx)
 {
   printf("scriptRun #%d begin\n", idx);
   CScript c = scripts.at(idx);
-  std::vector<std::vector<unsigned char>> stack;
+  std::vector<std::vector<unsigned char> > stack;
   ScriptError error;
   CTransaction tx;
   int nIn = 0;
@@ -33,7 +33,7 @@ scriptRun(int idx)
 }
 
 stackout*
-stackToCharArray(std::vector<std::vector<unsigned char>> stack)
+stackToCharArray(std::vector<std::vector<unsigned char> > stack)
 {
   stackout* bigStack = (stackout*)malloc(sizeof(stackout));
   int size = stack.size();
