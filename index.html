@@ -79,24 +79,19 @@ function onRuntimeInitialized() {
 var wasmURL = 'dogecoin.wasm';
 var wasmXHR = new XMLHttpRequest();
 wasmXHR.open('GET', wasmURL, true);
-//wasmXHR.responseType = 'arraybuffer';
+wasmXHR.responseType = 'arraybuffer';
 wasmXHR.onerror = function(err) { console.log('wasmxhr err', err.responseText, err) }
 wasmXHR.onload = function() {
+  console.log('onload cb. status', wasmXHR.status)
   if (wasmXHR.status === 200 || wasmXHR.status === 0) {
     Module.wasmBinary = wasmXHR.response;
-  } else {
-    var wasmURLBytes = tryParseAsDataURI(wasmURL);
-    if (wasmURLBytes) {
-      Module.wasmBinary = wasmURLBytes.buffer;
-    }
   }
 
   var script = document.createElement('script');
   script.src = "dogecoin.js";
   document.body.appendChild(script);
-};
+}
 wasmXHR.send(null);
-
 
 var inputsDiv = document.getElementById('codeinputs')
 var scriptoutsDiv = document.getElementById('scriptouts')
