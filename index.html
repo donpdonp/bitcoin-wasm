@@ -17,7 +17,6 @@
 #scriptouts div { word-wrap: break-word; }
 #codeinputs textarea { width: 45em; height: 20em; }
 </style>
-<script src="dogecoin.js"></script>
 </head>
 <body>
 <div id="banner">
@@ -69,15 +68,39 @@ Compiled script
 </div>
 
 <script>
-var inputsDiv = document.getElementById('codeinputs')
-var scriptoutsDiv = document.getElementById('scriptouts')
-
+var Module = {}
 Module['onRuntimeInitialized'] = onRuntimeInitialized;
 function onRuntimeInitialized() {
   document.querySelector('#banner').style.backgroundColor="#0f0"
   var verz = Module.ccall('version', 'string', [], [])
   document.querySelector('#loading').innerHTML = "("+verz + " loaded)"
 }
+
+var wasmURL = 'dogecoin.wasm';
+var wasmXHR = new XMLHttpRequest();
+wasmXHR.open('GET', wasmURL, true);
+wasmXHR.responseType = 'arraybuffer';
+wasmXHR.onload = function() {
+  if (wasmXHR.status === 200 || wasmXHR.status === 0) {
+    Module.wasmBinary = wasmXHR.response;
+  } else {
+    var wasmURLBytes = tryParseAsDataURI(wasmURL);
+    if (wasmURLBytes) {
+      Module.wasmBinary = wasmURLBytes.buffer;
+    }
+  }
+
+var script = document.createElement('script');
+script.src = "dogecoin.js";
+document.body.appendChild(script);
+
+};
+wasmXHR.send(null);
+
+
+var inputsDiv = document.getElementById('codeinputs')
+var scriptoutsDiv = document.getElementById('scriptouts')
+
 
 function inputInputs() {
   var inputText = document.querySelector('#codeinputs textarea')
