@@ -84,27 +84,7 @@ wasmXHR.onerror = function(err) {
   document.querySelector('#loading').innerHTML = "(wasm load error!)"
   console.log('wasmxhr err', err.responseText, err) 
 }
-wasmXHR.onreadystatechange = function() { 
-  console.log('wasmxhr ready', wasmXHR.readyState) 
-  if(this.readyState == this.HEADERS_RECEIVED) {
-
-    // Get the raw header string
-    var headers = request.getAllResponseHeaders();
-
-    // Convert the header string into an array
-    // of individual headers
-    var arr = headers.trim().split(/[\r\n]+/);
-
-    // Create a map of header names to values
-    var headerMap = {};
-    arr.forEach(function (line) {
-      var parts = line.split(': ');
-      var header = parts.shift();
-      var value = parts.join(': ');
-      headerMap[header] = value;
-    });
-  }
-}
+wasmXHR.onreadystatechange = function() { console.log('wasmxhr ready', wasmXHR.readyState, this.getAllResponseHeaders()) }
 wasmXHR.onload = function() {
   console.log('onload cb. status', wasmXHR.status)
   if (wasmXHR.status === 200 || wasmXHR.status === 0) {
