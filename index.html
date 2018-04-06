@@ -91,7 +91,8 @@ wasmXHR.onload = function() {
   script.src = "dogecoin.js";
   document.body.appendChild(script);
 }
-wasmXHR.send(null);
+console.log('wasmXHR send', wasmURL)
+wasmXHR.send();
 
 var inputsDiv = document.getElementById('codeinputs')
 var scriptoutsDiv = document.getElementById('scriptouts')
