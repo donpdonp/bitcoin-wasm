@@ -81,7 +81,7 @@ var wasmXHR = new XMLHttpRequest();
 wasmXHR.open('GET', wasmURL, true);
 wasmXHR.responseType = 'arraybuffer';
 wasmXHR.onerror = function(err) { console.log('wasmxhr err', err.responseText, err) }
-req.onreadystatechange = function() { console.log('wasmxhr ready', wasmXHR.readyState) }
+wasmXHR.onreadystatechange = function() { console.log('wasmxhr ready', wasmXHR.readyState) }
 wasmXHR.onload = function() {
   console.log('onload cb. status', wasmXHR.status)
   if (wasmXHR.status === 200 || wasmXHR.status === 0) {
