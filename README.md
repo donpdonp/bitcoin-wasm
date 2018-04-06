@@ -6,6 +6,7 @@ Build the script/interpreter part of the bitcoin code base for webasm.
 ## build
 ```bash
 bitcoin-wasm $ make
+building for dogecoin 1.10.0
 emcc -s 'EXPORTED_FUNCTIONS...
 -rw-rw-r-- 1 donp donp 636982 Mar  5 14:13 build/bridge.wasm
 ```

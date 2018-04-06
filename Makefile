@@ -74,7 +74,7 @@ all: build $(build)/$(project_name).wasm
 #emscripten
 $(build)/$(project_name).wasm: src/*.cpp
 	@echo building for $(project_full_name)
-	emcc -s $(exports) -s $(export_extras) -s $(binaryen_methods) -s WASM=1 -D PROJECT_NAME="\"$(project_full_name)\"" -o $(build)/$(project_name).js $(openssl_flags) -I$(bitcoin_source)/src $(bitcoin_files_full) $^
+	emcc -s $(exports) -s $(export_extras) -s WASM=1 -D PROJECT_NAME="\"$(project_full_name)\"" -o $(build)/$(project_name).js $(openssl_flags) -I$(bitcoin_source)/src $(bitcoin_files_full) $^
 	ls -l $(build)/$(project_name)* 
 
 build:
