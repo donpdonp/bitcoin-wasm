@@ -1,353 +1,403 @@
 <!DOCTYPE html>
-<html lang="en"> 
-<head>
-<meta charset="utf-8"/>
-<style>
-.codestack { 
- display: grid;
- grid-template-columns: 1fr 1fr;
-}
-.lineno { font-size: 80% }
-#compiledscript { margin-top: 2em; }
-#gettx { margin-bottom: 2em; }
-#gettx input { width: 40em; }
-#scriptouts { font-family: courier; 
- font-size: 90%;
- width: 40em;}
-#scriptouts div { word-wrap: break-word; }
-#codeinputs textarea { width: 45em; height: 20em; }
-</style>
-</head>
-<body>
-<div id="banner">
-bitcoin script <span id="loading">(loading wasm...)</span>
-</div>
-
-<div id="gettx">
-<form onSubmit="gettx(this); return false">
-<div>
-Load editor with tx from  
-<select name="source">
-<option value="bitcoin">bitcoin mainnet</option>
-<option value="dogecoin">dogecoin mainnet</option>
-</select>
- (optional)
-</div>
-<input placeholder="txid" name="txid">
-<div id='txloadmsg'>
-</div>
-</form>
-</div>
-
-<div class="codestack">
-
-<div class="code">
-<div>
-Bitcoin Script Editor
-</div>
-<form onSubmit="justgo(); return false">
-<div id="codeinputs">
-<textarea></textarea>
-</div>
-<input type=submit name="run" value="Run" />
-</form>
-</div>
-
-<div class="stack">
-<span class="stackhead">Stack [hex]</span>
-<div id="scriptouts">
-</div>
-</div>
-
-<div id="compiledscript">
-Compiled script
-<div id="codeout">
-</div>
-</div>
-
-</div>
-
-<script>
-var Module = {}
-Module['onRuntimeInitialized'] = onRuntimeInitialized;
-function onRuntimeInitialized() {
-  document.querySelector('#banner').style.backgroundColor="#0f0"
-  var verz = Module.ccall('version', 'string', [], [])
-  document.querySelector('#loading').innerHTML = "("+verz + " loaded)"
-}
-
-var wasmURL = 'dogecoin.wasm';
-var wasmXHR = new XMLHttpRequest();
-wasmXHR.open('GET', wasmURL, true);
-wasmXHR.responseType = 'arraybuffer';
-wasmXHR.onerror = function(err) { 
-  document.querySelector('#loading').innerHTML = "(wasm load error!)"
-  console.log('wasmxhr err', err.responseText, err) 
-}
-wasmXHR.onreadystatechange = function() { console.log('wasmxhr ready', wasmXHR.readyState, this.getAllResponseHeaders()) }
-wasmXHR.onload = function() {
-  console.log('onload cb. status', wasmXHR.status)
-  if (wasmXHR.status === 200 || wasmXHR.status === 0) {
-    Module.wasmBinary = wasmXHR.response;
-  }
-
-  var script = document.createElement('script');
-  script.src = "dogecoin.js";
-  document.body.appendChild(script);
-}
-console.log('wasmXHR send', wasmURL)
-wasmXHR.send();
-
-var inputsDiv = document.getElementById('codeinputs')
-var scriptoutsDiv = document.getElementById('scriptouts')
-
-
-function inputInputs() {
-  var inputText = document.querySelector('#codeinputs textarea')
-  var inputs = inputText.value.split('\n').map(function(line){
-    if(line[0] == '#') {
-      line = ''
-    } else {
-      line = line.toUpperCase()
-    }
-    return line
-  })
-  return inputs.clean('')
-}
-
-function inputOutputs(ops) {
-  var outElements = document.querySelector('#codeout')
-  outElements.innerHTML = '' //clear
-  ops.forEach((op, i) => {
-    var el = document.createElement('div')
-    var msg = opToStr(op)
-    if (msg.substr(0,2) == "0x" && msg.length > 25) { msg = msg.substr(0,25)+"..."+msg.substr(msg.length-2, 2)+" (push "+(msg.length-2)/2+" bytes)" }
-    if (msg.substr(0,3) == "OP_") {  msg = msg + " (opcode "+op[0].toString(16).toUpperCase()+")" }
-    el.innerHTML = "<span class='lineno'>op "+(i+1)+":</span> "+msg
-    outElements.appendChild(el)
-  })
-}
-
-function opToStr(op) {
-    var msg
-    if (op[0] <= 0x4e) {
-      op = Array.from(op)
-      var pusher = op.shift()
-      var hexmsg = toHex(op)
-      msg = "0x"+hexmsg
-    } else {
-      var tempScript = compileBytes(op)
-      msg = Module.ccall('scriptToString', 'string', ['number'], [tempScript])
-      if(op[0] == 0xac || op[0] == 0xad || op[0] == 0xae || op[0] == 0xaf) { msg = "#"+msg+" (unimplemented)" }
-    }
-  return msg
-}
-
-function justgo() {
-  console.log('--- js script run')
-  var inputs = inputInputs()
-  var scriptIdx
-  if (inputs[0].length > 0 && inputs[0][0] == '*') {
-    var hexbytes = inputs[0].substr(1, inputs[0].length-1)
-    scriptIdx = compileBytes(fromHex(hexbytes))
-  } else {
-    scriptIdx = compile(inputs)
-  }
-  var ops = decompile(scriptIdx)
-  inputOutputs(ops)
-  var stack = scriptRun(scriptIdx)
-  stackOutputs(stack)
-}
-
-function stackSuccess(success) {
-  var stackHead = document.querySelector('.stackhead')
-  var color = success ? "#0f0" : "#f00"
-  stackHead.style.backgroundColor = color
-}
-
-function stackOutputs(stack) {
-  scriptoutsDiv.innerHTML = '' // clean out
-  stack.forEach(function(s,i){
-    var el = document.createElement('div')
-    el.innerHTML= stackBytestoString(s)
-    scriptoutsDiv.appendChild(el)
-  })
-}
-
-function stackBytestoString(s) {
-    var msg = "(empty)"
-    if(s.length > 4) {
-      msg = toHex(s)+' ('+s.length+' bytes)'
-    } else {
-      s.reverse() // happens in-place
-      var negative = 1
-      if(s[0] & 0x80) {
-        s[0] &= ~0x80
-        negative = -1
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      .codestack {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
       }
-      var sint = s.reduce(function(m,e){ return (m<<8|e) }, 0)  * negative
-      msg = sint
-      msg += '(number) [0x'+Object.values(s).map(function(s){var hex=s.toString(16); return hex.length == 1 ? '0'+hex : hex}).join('')+']'
-    }
-    return msg
-}
+      .lineno {
+        font-size: 80%;
+      }
+      #compiledscript {
+        margin-top: 2em;
+      }
+      #gettx {
+        margin-bottom: 2em;
+      }
+      #gettx input {
+        width: 40em;
+      }
+      #scriptouts {
+        font-family: courier;
+        font-size: 90%;
+        width: 40em;
+      }
+      #scriptouts div {
+        word-wrap: break-word;
+      }
+      #codeinputs textarea {
+        width: 45em;
+        height: 20em;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="banner">Script engine <span id="loading">(loading wasm...)</span></div>
 
-function compile(ops) {
-  var strBufArr = ops.map(function(s){ 
-    var bbuf = Module._malloc(s.length+1); 
-    Module.writeAsciiToMemory(s, bbuf);
-    return bbuf } )
-  var heapBytes = _arrayToHeap(new Uint32Array(strBufArr))
-  var idx = Module.ccall('stringCompile', 'number', ['number', 'number'], 
-                            [heapBytes.byteOffset, ops.length])
-  console.log('compiled', ops.length, 'lines to script', '#'+idx)
-  return idx
-}
+    <div id="gettx">
+      <form onSubmit="gettx(this); return false">
+        <div>
+          Load editor with tx from
+          <select name="source">
+            <option value="bitcoin">bitcoin mainnet</option>
+            <option value="dogecoin">dogecoin mainnet</option>
+          </select>
+          (optional)
+        </div>
+        <input placeholder="txid" name="txid" />
+        <div id="txloadmsg"></div>
+      </form>
+    </div>
 
-function compileBytes(binstr) {
-  var uint=new Uint8Array(binstr.length);
-  for(var i=0,j=binstr.length;i<j;++i){
-    uint[i] = typeof binstr == 'string' ? binstr.charCodeAt(i) : binstr[i];
-  }
-  var binstrptr = _arrayToHeap(uint)
-  var idx = Module.ccall('byteCompile', 'number', ['number', 'number'], [binstrptr.byteOffset, binstr.length])
-  console.log('compiled', binstr.length, 'bytes to script', '#'+idx)
-  return idx
-}
+    <div class="codestack">
+      <div class="code">
+        <div>
+          Bitcoin Script Editor
+        </div>
+        <form onSubmit="justgo(); return false">
+          <div id="codeinputs">
+            <textarea></textarea>
+          </div>
+          <input type="submit" name="run" value="Run" />
+        </form>
+      </div>
 
-function decompile(idx) {
-  var code = Module.ccall('decompile', 'number', ['number'], [idx])
-  var linecount = Module.getValue(code, 'i32')
-  var lines = []
-  var linesheap = Module.getValue(code+4, '*')
-  console.log('js decompiled to ', 'codeptr:'+code, 'lines:'+linecount, 'linesheap:'+linesheap)
-  for(var i=0; i<linecount; i++){ 
-    var lineheap = Module.getValue(linesheap+(4*i), '*')
-    var linelen = Module.getValue(lineheap, 'i8')
-    var stkrow = new Uint8Array(Module.HEAPU8.buffer, lineheap+1, linelen);
-    lines.push(stkrow)
-  }
-  return lines
-}
+      <div class="stack">
+        <span class="stackhead">Stack [hex]</span>
+        <div id="scriptouts"></div>
+      </div>
 
-function scriptRun(idx) {
-  var struct = Module.ccall('scriptRun', 'number', ['number'], [idx])
-  var success = Module.getValue(struct, 'i8')
-  stackSuccess(success)
-  var len = Module.getValue(struct+4, 'i32')
-  console.log('scriptRun post success', success, 'stklen', len)
-  var stk = []
-  var charheap = Module.getValue(struct+8, '*')
-  for(var i=0; i<len; i++){ 
-    var rowheap = Module.getValue(charheap+(4*i), '*')
-    var stkrowlen = Module.getValue(rowheap, 'i8')
-    var stkrow = new Uint8Array(Module.HEAPU8.buffer, rowheap+1, stkrowlen);
-    stk.push(stkrow)
-  }
-  return stk
-}
+      <div id="compiledscript">
+        Compiled script
+        <div id="codeout"></div>
+      </div>
+    </div>
 
-function _arrayToHeap(typedArray){
-  var numBytes = typedArray.length * typedArray.BYTES_PER_ELEMENT;
-  var ptr = Module._malloc(numBytes);
-  var heapBytes = new Uint8Array(Module.HEAPU8.buffer, ptr, numBytes);
-  heapBytes.set(new Uint8Array(typedArray.buffer));
-  return heapBytes;
-}
+    <script>
+      var Module = {};
+      Module["onRuntimeInitialized"] = onRuntimeInitialized;
+      function onRuntimeInitialized() {
+        document.querySelector("#banner").style.backgroundColor = "#0f0";
+        var verz = Module.ccall("version", "string", [], []);
+        document.querySelector("#loading").innerHTML = verz + " loaded";
+      }
 
-function toHex(s) {
-    var h = ''
-    for (var i = 0; i < s.length; i++) {
-        var byte = typeof s == 'string' ? s.charCodeAt(i) : s[i]
-        var hexDigits = byte.toString(16)
-        if(hexDigits.length <2) { hexDigits = '0'+hexDigits }
-        h += hexDigits
-    }
-    return h
-}
+      var wasmURL = "dogecoin.wasm";
+      var wasmXHR = new XMLHttpRequest();
+      wasmXHR.open("GET", wasmURL, true);
+      wasmXHR.responseType = "arraybuffer";
+      wasmXHR.onerror = function (err) {
+        document.querySelector("#loading").innerHTML = "(wasm load error!)";
+        console.log("wasmxhr err", err.responseText, err);
+      };
+      wasmXHR.onreadystatechange = function () {
+        console.log("wasmxhr ready", wasmXHR.readyState, this.getAllResponseHeaders());
+      };
+      wasmXHR.onload = function () {
+        console.log("onload cb. status", wasmXHR.status);
+        if (wasmXHR.status === 200 || wasmXHR.status === 0) {
+          Module.wasmBinary = wasmXHR.response;
+        }
 
-function fromHex(h) {
-    var s = ''
-    for (var i = 0; i < h.length; i+=2) {
-        s += String.fromCharCode(parseInt(h.substr(i, 2), 16))
-    }
-    return s
-}
+        var script = document.createElement("script");
+        script.src = "dogecoin.js";
+        document.body.appendChild(script);
+      };
+      console.log("wasmXHR send", wasmURL);
+      wasmXHR.send();
 
-Array.prototype.clean = function(deleteValue) {
-  for (var i = 0; i < this.length; i++) {
-    if (this[i] == deleteValue) {         
-      this.splice(i, 1);
-      i--;
-    }
-  }
-  return this;
-};
-</script>
+      var inputsDiv = document.getElementById("codeinputs");
+      var scriptoutsDiv = document.getElementById("scriptouts");
 
-<script>
-function txurl(source, txid) {
-  var url
-  if(source == "bitcoin") { url = "https://blockexplorer.com/api/tx/"+txid }
-  if(source == "bitcoin") { url = "https://api.blockcypher.com/v1/btc/main/txs/"+txid }
-  if(source == "dogecoin") { url = "https://dogechain.info/api/v1/transaction/"+txid }
-  if(source == "dogecoin") { url = "https://chain.so//api/v2/tx/doge/"+txid }
-  if(source == "dogecoin") { url = "https://api.blockcypher.com/v1/doge/main/txs/"+txid }
-  return url
-}
+      function inputInputs() {
+        var inputText = document.querySelector("#codeinputs textarea");
+        var inputs = inputText.value.split("\n").map(function (line) {
+          if (line[0] == "#") {
+            line = "";
+          } else {
+            line = line.toUpperCase();
+          }
+          return line;
+        });
+        return inputs.clean("");
+      }
 
-function gettx(form) {
-  var source = form.elements['source'].value
-  var txid = form.elements['txid'].value
-  if(txid.substr(0,2) == "0x") { txid = txid.substr(2, txid.length-2) }
-  var oReq = new XMLHttpRequest();
-  var txloadmsg = document.querySelector('#txloadmsg')
-  oReq.addEventListener("load", (el) => {txloaded(el, source, txid)});
-  oReq.addEventListener("error", function(){txloadmsg.innerHTML = 'network error'});
-  var url = txurl(source, txid)
-  oReq.open("GET", url)
-  txloadmsg.innerHTML = "loading tx..."
-  oReq.send();
-}
+      function inputOutputs(ops) {
+        var outElements = document.querySelector("#codeout");
+        outElements.innerHTML = ""; //clear
+        ops.forEach((op, i) => {
+          var el = document.createElement("div");
+          var msg = opToStr(op);
+          if (msg.substr(0, 2) == "0x" && msg.length > 25) {
+            msg = msg.substr(0, 25) + "..." + msg.substr(msg.length - 2, 2) + " (push " + (msg.length - 2) / 2 + " bytes)";
+          }
+          if (msg.substr(0, 3) == "OP_") {
+            msg = msg + " (opcode " + op[0].toString(16).toUpperCase() + ")";
+          }
+          el.innerHTML = "<span class='lineno'>op " + (i + 1) + ":</span> " + msg;
+          outElements.appendChild(el);
+        });
+      }
 
-function txloaded (el, source, txid) {
-  var txloadmsg = document.querySelector('#txloadmsg')
-  var text = el.target.response
-  if(text[0] == '{') {
-    var tx = JSON.parse(text)
-    if(tx.error) {
-      txloadmsg.innerHTML = tx.error
-    } else {
-      var oReq = new XMLHttpRequest();
-      var txloadmsg = document.querySelector('#txloadmsg')
-      var uxtoid = tx.inputs[0].prev_hash
-      oReq.addEventListener("load", (el) => {uxtoloaded(el, txid, uxtoid, tx)});
-      var url = txurl(source, uxtoid)
-      oReq.open("GET", url)
-      txloadmsg.innerHTML = "loading uxto..."
-      oReq.send();
-    }
-  } else {
-    txloadmsg.innerHTML = "error..."+text
-  }
-}
+      function opToStr(op) {
+      console.log('opToStr', op)
+        var msg;
+        if (op[0] <= 0x4e) { // OP_PUSHDATA4
+          op = Array.from(op);
+          var pusher = op.shift();
+          var hexmsg = toHex(op);
+          msg = "0x" + hexmsg;
+        } else {
+          msg = Module.ccall("getOpName", "string", ["number"], [op[0]]);
+          console.log('getOpName', op[0], msg)
+          if (op[0] == 0xac || op[0] == 0xad || op[0] == 0xae || op[0] == 0xaf) {
+            msg = "#" + msg + " (unimplemented)";
+          }
+        }
+        return msg;
+      }
 
-function uxtoloaded(el, txid, uxtoid, tx) {
-  var txloadmsg = document.querySelector('#txloadmsg')
-  txloadmsg.innerHTML = ""
-  var text = el.target.response
-  var uxto = JSON.parse(text)
-  var inScriptIdx = compileBytes(fromHex(tx.inputs[0].script))
-  var asmin = decompile(inScriptIdx).map(opToStr)
-  console.log('uxto.inputs', uxto.inputs)
-  console.log('tx.inputs[0].script', tx.inputs[0].output_index)
-  var outScriptIdx = compileBytes(fromHex(uxto.inputs[tx.inputs[0].output_index-1].script))
-  var asmout = decompile(outScriptIdx).map(opToStr)
-  var inputText = document.querySelector('#codeinputs textarea')
-  inputText.value = "# tx "+txid+"\n# in[0/"+Object.keys(tx.inputs).length+"]\n"+asmin.join("\n") + "\n"+
-                    "# tx "+uxtoid+"\n# out["+tx.inputs[0].output_index+"/"+Object.keys(uxto.outputs).length+"] \n" + asmout.join("\n")
-}
-</script>
+      function justgo() {
+        console.log("--- js script run");
+        var inputs = inputInputs();
+        var scriptIdx;
+        if (inputs[0].length > 0 && inputs[0][0] == "*") {
+          var hexbytes = inputs[0].substr(1, inputs[0].length - 1);
+          scriptIdx = compileBytes(fromHex(hexbytes));
+        } else {
+          scriptIdx = compile(inputs);
+        }
+        var ops = decompile(scriptIdx);
+        inputOutputs(ops);
+        var stack = scriptRun(scriptIdx);
+        stackOutputs(stack);
+      }
 
-</body>
+      function stackSuccess(success) {
+        var stackHead = document.querySelector(".stackhead");
+        var color = success ? "#0f0" : "#f00";
+        stackHead.style.backgroundColor = color;
+      }
+
+      function stackOutputs(stack) {
+        scriptoutsDiv.innerHTML = ""; // clean out
+        stack.forEach(function (s, i) {
+          var el = document.createElement("div");
+          el.innerHTML = stackBytestoString(s);
+          scriptoutsDiv.appendChild(el);
+        });
+      }
+
+      function stackBytestoString(s) {
+        var msg = "(empty)";
+        if (s.length > 4) {
+          msg = toHex(s) + " (" + s.length + " bytes)";
+        } else {
+          s.reverse(); // happens in-place
+          var negative = 1;
+          if (s[0] & 0x80) {
+            s[0] &= ~0x80;
+            negative = -1;
+          }
+          var sint =
+            s.reduce(function (m, e) {
+              return (m << 8) | e;
+            }, 0) * negative;
+          msg = sint;
+          msg +=
+            "(number) [0x" +
+            Object.values(s)
+              .map(function (s) {
+                var hex = s.toString(16);
+                return hex.length == 1 ? "0" + hex : hex;
+              })
+              .join("") +
+            "]";
+        }
+        return msg;
+      }
+
+      function compile(ops) {
+        var strBufArr = ops.map(function (s) {
+          var bbuf = Module._malloc(s.length + 1);
+          Module.writeAsciiToMemory(s, bbuf);
+          return bbuf;
+        });
+        var heapBytes = _arrayToHeap(new Uint32Array(strBufArr));
+        var idx = Module.ccall("stringCompile", "number", ["number", "number"], [heapBytes.byteOffset, ops.length]);
+        console.log("compiled", ops.length, "lines to script", "#" + idx);
+        return idx;
+      }
+
+      function compileBytes(binstr) {
+        var uint = new Uint8Array(binstr.length);
+        for (var i = 0, j = binstr.length; i < j; ++i) {
+          uint[i] = typeof binstr == "string" ? binstr.charCodeAt(i) : binstr[i];
+        }
+        var binstrptr = _arrayToHeap(uint);
+        var idx = Module.ccall("byteCompile", "number", ["number", "number"], [binstrptr.byteOffset, binstr.length]);
+        console.log("compiled", binstr.length, "bytes to script", "#" + idx);
+        return idx;
+      }
+
+      function decompile(idx) {
+        var code = Module.ccall("decompile", "number", ["number"], [idx]);
+        var linecount = Module.getValue(code, "i32");
+        var lines = [];
+        var linesheap = Module.getValue(code + 4, "*");
+        console.log("js decompiled to ", "codeptr:" + code, "lines:" + linecount, "linesheap:" + linesheap);
+        for (var i = 0; i < linecount; i++) {
+          var lineheap = Module.getValue(linesheap + 4 * i, "*");
+          var linelen = Module.getValue(lineheap, "i8");
+          var linelenpeek = Module.getValue(lineheap+1, "i8");
+          var stkrow = new Uint8Array(Module.HEAPU8.buffer, lineheap + 1, linelen);
+          console.log('stkrow', lineheap, linelen, stkrow.length, linelenpeek, stkrow)
+          lines.push(stkrow);
+        }
+        return lines;
+      }
+
+      function scriptRun(idx) {
+        var struct = Module.ccall("scriptRun", "number", ["number"], [idx]);
+        var success = Module.getValue(struct, "i8");
+        stackSuccess(success);
+        var len = Module.getValue(struct + 4, "i32");
+        console.log("scriptRun post success", success, "stklen", len);
+        var stk = [];
+        var charheap = Module.getValue(struct + 8, "*");
+        for (var i = 0; i < len; i++) {
+          var rowheap = Module.getValue(charheap + 4 * i, "*");
+          var stkrowlen = Module.getValue(rowheap, "i8");
+          var stkrow = new Uint8Array(Module.HEAPU8.buffer, rowheap + 1, stkrowlen);
+          stk.push(stkrow);
+        }
+        return stk;
+      }
+
+      function _arrayToHeap(typedArray) {
+        var numBytes = typedArray.length * typedArray.BYTES_PER_ELEMENT;
+        var ptr = Module._malloc(numBytes);
+        var heapBytes = new Uint8Array(Module.HEAPU8.buffer, ptr, numBytes);
+        heapBytes.set(new Uint8Array(typedArray.buffer));
+        return heapBytes;
+      }
+
+      function toHex(s) {
+        var h = "";
+        for (var i = 0; i < s.length; i++) {
+          var byte = typeof s == "string" ? s.charCodeAt(i) : s[i];
+          var hexDigits = byte.toString(16);
+          if (hexDigits.length < 2) {
+            hexDigits = "0" + hexDigits;
+          }
+          h += hexDigits;
+        }
+        return h;
+      }
+
+      function fromHex(h) {
+        var s = "";
+        for (var i = 0; i < h.length; i += 2) {
+          s += String.fromCharCode(parseInt(h.substr(i, 2), 16));
+        }
+        return s;
+      }
+
+      Array.prototype.clean = function (deleteValue) {
+        for (var i = 0; i < this.length; i++) {
+          if (this[i] == deleteValue) {
+            this.splice(i, 1);
+            i--;
+          }
+        }
+        return this;
+      };
+    </script>
+
+    <script>
+      function txurl(source, txid) {
+        var url;
+        if (source == "bitcoin") {
+          url = "https://blockexplorer.com/api/tx/" + txid;
+        }
+        if (source == "bitcoin") {
+          url = "https://api.blockcypher.com/v1/btc/main/txs/" + txid;
+        }
+        if (source == "dogecoin") {
+          url = "https://dogechain.info/api/v1/transaction/" + txid;
+        }
+        if (source == "dogecoin") {
+          url = "https://chain.so//api/v2/tx/doge/" + txid;
+        }
+        if (source == "dogecoin") {
+          url = "https://api.blockcypher.com/v1/doge/main/txs/" + txid;
+        }
+        return url;
+      }
+
+      function gettx(form) {
+        var source = form.elements["source"].value;
+        var txid = form.elements["txid"].value;
+        if (txid.substr(0, 2) == "0x") {
+          txid = txid.substr(2, txid.length - 2);
+        }
+        var oReq = new XMLHttpRequest();
+        var txloadmsg = document.querySelector("#txloadmsg");
+        oReq.addEventListener("load", (el) => {
+          txloaded(el, source, txid);
+        });
+        oReq.addEventListener("error", function () {
+          txloadmsg.innerHTML = "network error";
+        });
+        var url = txurl(source, txid);
+        oReq.open("GET", url);
+        txloadmsg.innerHTML = "loading tx...";
+        oReq.send();
+      }
+
+      function txloaded(el, source, txid) {
+        var txloadmsg = document.querySelector("#txloadmsg");
+        var text = el.target.response;
+        if (text[0] == "{") {
+          var tx = JSON.parse(text);
+          if (tx.error) {
+            txloadmsg.innerHTML = tx.error;
+          } else {
+            var oReq = new XMLHttpRequest();
+            var txloadmsg = document.querySelector("#txloadmsg");
+            var uxtoid = tx.inputs[0].prev_hash;
+            oReq.addEventListener("load", (el) => {
+              uxtoloaded(el, txid, uxtoid, tx);
+            });
+            var url = txurl(source, uxtoid);
+            oReq.open("GET", url);
+            txloadmsg.innerHTML = "loading uxto...";
+            oReq.send();
+          }
+        } else {
+          txloadmsg.innerHTML = "error..." + text;
+        }
+      }
+
+      function uxtoloaded(el, txid, uxtoid, tx) {
+        var txloadmsg = document.querySelector("#txloadmsg");
+        txloadmsg.innerHTML = "";
+        var text = el.target.response;
+        var uxto = JSON.parse(text);
+        if (tx.inputs[0].script) {
+          var inScriptIdx = compileBytes(fromHex(tx.inputs[0].script));
+          var asmin = decompile(inScriptIdx).map(opToStr);
+          var outScriptIdx = compileBytes(fromHex(uxto.inputs[tx.inputs[0].output_index - 1].script));
+          var asmout = decompile(outScriptIdx).map(opToStr);
+          var inputText = document.querySelector("#codeinputs textarea");
+          inputText.value =
+            "# tx " + txid + "\n# in[1/" + Object.keys(tx.inputs).length + "]\n" + asmin.join("\n") + "\n" + "# tx " + uxtoid + "\n# out[" + tx.inputs[0].output_index + "/" + Object.keys(uxto.outputs).length + "] \n" + asmout.join("\n");
+        } else {
+          txloadmsg.innerHTML = "No script for "+tx.inputs[0].script_type;
+        }
+      }
+    </script>
+  </body>
 </html>

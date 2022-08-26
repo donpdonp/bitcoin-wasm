@@ -2034,6 +2034,12 @@ var _stringCompile = Module["_stringCompile"] = createExportWrapper("stringCompi
 var _decompile = Module["_decompile"] = createExportWrapper("decompile");
 
 /** @type {function(...*):?} */
+var _getOpName = Module["_getOpName"] = createExportWrapper("getOpName");
+
+/** @type {function(...*):?} */
+var _scriptToString = Module["_scriptToString"] = createExportWrapper("scriptToString");
+
+/** @type {function(...*):?} */
 var _version = Module["_version"] = createExportWrapper("version");
 
 /** @type {function(...*):?} */
