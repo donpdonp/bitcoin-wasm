@@ -390,9 +390,11 @@ OP_ADD</textarea>
         var text = el.target.response;
         var uxto = JSON.parse(text);
         if (tx.inputs[0].script) {
-          var inScriptIdx = compileBytes(fromHex(tx.inputs[0].script));
+          var hexIn = tx.inputs[0].script
+          var inScriptIdx = compileBytes(fromHex(hexIn));
           var asmin = decompile(inScriptIdx).map(opToStr);
-          var outScriptIdx = compileBytes(fromHex(uxto.inputs[tx.inputs[0].output_index].script));
+          var hexOut = uxto.outputs[tx.inputs[0].output_index].script
+          var outScriptIdx = compileBytes(fromHex(hexOut));
           var asmout = decompile(outScriptIdx).map(opToStr);
           var inputText = document.querySelector("#codeinputs textarea");
           inputText.value =
