@@ -398,7 +398,7 @@ OP_ADD</textarea>
           var asmout = decompile(outScriptIdx).map(opToStr);
           var inputText = document.querySelector("#codeinputs textarea");
           inputText.value =
-            "# tx " + txid + "\n# in[1/" + Object.keys(tx.inputs).length + "]\n" + asmin.join("\n") + "\n" + "# tx " + uxtoid + "\n# out[" + (tx.inputs[0].output_index+1) + "/" + Object.keys(uxto.outputs).length + "] \n" + asmout.join("\n");
+            "# tx " + txid + "\n# in[1/" + Object.keys(tx.inputs).length + "]\n" + asmin.join("\n") + "\n\n" + "# utxo " + uxtoid + "\n# out[" + (tx.inputs[0].output_index+1) + "/" + Object.keys(uxto.outputs).length + "] \n" + asmout.join("\n");
         } else {
           txloadmsg.innerHTML = "No script for "+tx.inputs[0].script_type;
         }
