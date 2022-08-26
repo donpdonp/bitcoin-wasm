@@ -1,4 +1,4 @@
-#include "config/bitcoin-config.h"
+//#include "config/bitcoin-config.h"
 #include "openssl/crypto.h"
 #include "script/script.h"
 #include "script/script_error.h"
@@ -9,19 +9,20 @@
 
 extern "C" {
 
-stackout*
-scriptRun(int idx)
-{
+stackout* scriptRun(int idx) {
   printf("scriptRun #%d begin\n", idx);
   CScript c = scripts.at(idx);
-  std::vector<std::vector<unsigned char> > stack;
+  std::vector<std::vector<unsigned char>> stack;
   ScriptError error;
   CTransaction tx;
   int nIn = 0;
+  CAmount amount = 0;
   const TransactionSignatureChecker& checker =
-    TransactionSignatureChecker(&tx, nIn);
+      TransactionSignatureChecker(&tx, nIn, amount);
   // EvalScript(stack, script, flags, signatureChecker, error)
-  bool retval = EvalScript(stack, c, SCRIPT_VERIFY_P2SH, checker, &error);
+  SigVersion version = SIGVERSION_BASE;
+  bool retval =
+      EvalScript(stack, c, SCRIPT_VERIFY_P2SH, checker, version, &error);
   if (retval == 0) {
     printf("scriptRun FAIL: %s\n", ScriptErrorString(error));
   } else {
@@ -32,9 +33,7 @@ scriptRun(int idx)
   return stackRun;
 }
 
-stackout*
-stackToCharArray(std::vector<std::vector<unsigned char> > stack)
-{
+stackout* stackToCharArray(std::vector<std::vector<unsigned char>> stack) {
   stackout* bigStack = (stackout*)malloc(sizeof(stackout));
   int size = stack.size();
   bigStack->stack = (char**)malloc(sizeof(char*) * size);
@@ -46,9 +45,7 @@ stackToCharArray(std::vector<std::vector<unsigned char> > stack)
   return bigStack;
 }
 
-char*
-strvecToSizedCharPtr(std::vector<unsigned char>* strvec)
-{
+char* strvecToSizedCharPtr(std::vector<unsigned char>* strvec) {
   uint8_t vsize = strvec->size();
   char* c_copy = new char[vsize + 2];
   memcpy(c_copy + 1, (char*)strvec->data(), vsize);
@@ -56,18 +53,14 @@ strvecToSizedCharPtr(std::vector<unsigned char>* strvec)
   return c_copy;
 }
 
-const int
-byteCompile(unsigned char* scriptBytes, int len)
-{
+const int byteCompile(unsigned char* scriptBytes, int len) {
   std::vector<unsigned char> strvec(scriptBytes, scriptBytes + len);
   CScript c = CScript(strvec.begin(), strvec.end());
   scripts.push_back(c);
   return scripts.size() - 1;
 }
 
-const int
-stringCompile(char** opcodeNames, int len)
-{
+const int stringCompile(char** opcodeNames, int len) {
   printf("stringCompile %d opcode strings \n", len);
   CScript c = CScript();
   for (int i = 0; i < len; i++) {
@@ -80,9 +73,7 @@ stringCompile(char** opcodeNames, int len)
   return scripts.size() - 1;
 }
 
-void
-encodeOp(CScript* c, char* opcodeName)
-{
+void encodeOp(CScript* c, char* opcodeName) {
   if (strlen(opcodeName) > 0) {
     if (strlen(opcodeName) >= 2 && opcodeName[0] == 'O' &&
         opcodeName[1] == 'P') {
@@ -105,7 +96,7 @@ encodeOp(CScript* c, char* opcodeName)
         byteString.push_back(c);
       }
       *c << byteString;
-      printf("%s value (datalen %d)\n", opcodeName, (sizeof opcodeName[0]));
+      printf("%s value (datalen %lu)\n", opcodeName, (sizeof opcodeName[0]));
     } else {
       std::string str(opcodeName);
       int num = std::stoi(str, 0, 0);
@@ -115,9 +106,7 @@ encodeOp(CScript* c, char* opcodeName)
   }
 }
 
-codeout*
-decompile(int idx)
-{
+codeout* decompile(int idx) {
   CScript c = scripts.at(idx);
   codeout* code = (codeout*)malloc(sizeof(codeout));
   code->len = scriptCount(c);
@@ -138,15 +127,16 @@ decompile(int idx)
   return code;
 }
 
-const char*
-scriptToString(int idx)
-{
-  return scripts.at(idx).ToString().c_str();
+const char* getOpName(opcodetype opcode) {
+  return GetOpName(opcode);
 }
 
-const opcodetype
-opStringToOpCode(char* opName)
-{
+const char* scriptToString(int idx) {
+  codeout* code =  decompile(idx);
+  return code->lines[0];
+}
+
+const opcodetype opStringToOpCode(char* opName) {
   for (int i = 0; i <= 0xff; i++) {
     opcodetype opcode = (opcodetype)i;
     const char* maybeName = GetOpName(opcode);
@@ -157,21 +147,13 @@ opStringToOpCode(char* opName)
   return OP_INVALIDOPCODE;
 }
 
-bool
-is_digits(const std::string& str)
-{
+bool is_digits(const std::string& str) {
   return std::all_of(str.begin(), str.end(), digitCheck); // C++11
 }
 
-int
-digitCheck(char ch)
-{
-  return ::isdigit(ch) || ch == '-';
-}
+int digitCheck(char ch) { return ::isdigit(ch) || ch == '-'; }
 
-int
-scriptCount(CScript c)
-{
+int scriptCount(CScript c) {
   int count = 0;
   CScript::const_iterator pc = c.begin();
   opcodetype opcode;
@@ -189,9 +171,7 @@ scriptCount(CScript c)
   return count;
 }
 
-const char*
-version()
-{
+const char* version() {
   std::string str;
   str += PROJECT_NAME;
   /*
@@ -206,4 +186,5 @@ version()
   */
   return str.c_str();
 }
+
 }

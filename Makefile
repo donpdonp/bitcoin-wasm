@@ -1,6 +1,7 @@
 # edit these directories
 emsdk=../webasm/emsdk/ 
-bitcoin_source = ../dogecoin/github
+bitcoin_source = ../dogecoin
+secp256k1_source = ../libsecp256k1-0.1\~20220711
 wabt = ../webasm/wabt-1.0.0/
 
 package_version = $(shell perl -ne 'print if s/\#define\s+PACKAGE_VERSION\s+"([\d.]+)"/\1/' $(bitcoin_source)/src/config/bitcoin-config.h )
@@ -21,11 +22,13 @@ endif
 project_full_name = $(project_name) $(package_version)
 
 # files from bitcoin
-bitcoin_files = script/interpreter.cpp script/script.cpp script/script_error.cpp crypto/ripemd160.cpp crypto/sha1.cpp crypto/sha256.cpp primitives/transaction.cpp arith_uint256.cpp eccryptoverify.cpp uint256.cpp utilstrencodings.cpp pubkey.cpp ecwrapper.cpp
+bitcoin_files = script/interpreter.cpp script/script.cpp script/script_error.cpp crypto/ripemd160.cpp crypto/sha1.cpp \
+                crypto/sha256.cpp primitives/transaction.cpp arith_uint256.cpp uint256.cpp \
+				pubkey.cpp utilstrencodings.cpp
 bitcoin_files_full = $(addprefix $(bitcoin_source)/src/, $(bitcoin_files))
 
 openssl_source = openssl
-openssl_files = crypto/mem.c crypto/stack/stack.c
+openssl_files = 
 openssl_ecdsa_files = ecs_lib.c ecs_asn1.c ecs_ossl.c ecs_sign.c ecs_vrf.c ecs_err.c
 openssl_bn_files = bn_add.c bn_div.c bn_exp.c bn_lib.c bn_ctx.c bn_mul.c bn_mod.c \
 	bn_print.c bn_rand.c bn_shift.c bn_word.c bn_blind.c \
@@ -59,11 +62,15 @@ openssl_files_full = $(addprefix $(openssl_source)/, $(openssl_files))
 #                     $(addprefix $(openssl_source)/crypto/ec/, $(openssl_ec_files)) \
 #                     $(addprefix $(openssl_source)/crypto/asn1/, $(openssl_asn1_files))
 
-openssl_flags = -I$(openssl_source) -I$(openssl_source)/crypto -I$(openssl_source)/crypto/asn1 -I$(openssl_source)/crypto/evp $(openssl_files_full)
+openssl_flags = -I$(openssl_source) -I$(openssl_source)/crypto -I$(openssl_source)/include -I$(openssl_source)/crypto/asn1 \
+                -I$(openssl_source)/crypto/evp $(openssl_files_full) -sLLD_REPORT_UNDEFINED
+
+secp256k1_files = secp256k1.c precomputed_ecmult.c
+secp256k1_files_full = -I $(secp256k1_source)/include $(addprefix $(secp256k1_source)/src/, $(secp256k1_files)) 
 
 # bridge functions
-exports = 'EXPORTED_FUNCTIONS=["_scriptRun","_scriptToString", "_stringCompile", "_decompile", "_version", "_byteCompile"]'
-export_extras = 'EXTRA_EXPORTED_RUNTIME_METHODS=["cwrap","ccall", "writeAsciiToMemory", "writeArrayToMemory", "Pointer_stringify", "getValue"]'
+exports = 'EXPORTED_FUNCTIONS=["_scriptRun","_scriptToString", "_stringCompile", "_decompile", "_version", "_byteCompile", "_getOpName"]'
+export_extras = 'EXPORTED_RUNTIME_METHODS=["cwrap","ccall", "writeAsciiToMemory", "writeArrayToMemory", "getValue"]'
 binaryen_methods = 'BINARYEN_METHOD="native-wasm,interpret-binary"'
 
 # misc
@@ -74,7 +81,10 @@ all: build $(build)/$(project_name).wasm
 #emscripten
 $(build)/$(project_name).wasm: src/*.cpp
 	@echo building for $(project_full_name)
-	emcc -s $(exports) -s $(export_extras) -s WASM=1 -D PROJECT_NAME="\"$(project_full_name)\"" -o $(build)/$(project_name).js $(openssl_flags) -I$(bitcoin_source)/src $(bitcoin_files_full) $^
+	emcc -s $(exports) -s $(export_extras) -s WASM=1 -D PROJECT_NAME="\"$(project_full_name)\"" -o $(build)/$(project_name).js \
+		-I ../libsecp256k1-0.1\~20220711/include -I$(bitcoin_source)/src $(bitcoin_files_full)\
+		$(secp256k1_files_full) \
+		 $(openssl_flags) $(openssl_files_full) $^
 	ls -l $(build)/$(project_name)* 
 
 build:

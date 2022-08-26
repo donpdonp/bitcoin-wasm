@@ -15,15 +15,12 @@ const opcodetype opStringToOpCode(char* opName);
 codeout* decompile(int idx);
 void encodeOp(CScript* c, char* opcodeName);
 std::vector<CScript> scripts;
-bool is_digits(const std::string &str);
+bool is_digits(const std::string& str);
 int digitCheck(char ch);
-void printStack(std::vector<std::vector<unsigned char> > stack);
-stackout* stackToCharArray(std::vector<std::vector<unsigned char> > stack);
+void printStack(std::vector<std::vector<unsigned char>> stack);
+stackout* stackToCharArray(std::vector<std::vector<unsigned char>> stack);
 int scriptCount(CScript c);
 char* strvecToSizedCharPtr(std::vector<unsigned char>* strvec);
 const char* version();
 const int byteCompile(unsigned char* scriptBytes, int len);
-
-
 }
-
